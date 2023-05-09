@@ -15,15 +15,21 @@
  * limitations under the License.
  */
 
-import { defineComponent, onMounted, watch, toRefs, ref } from 'vue'
-import { NLayout, NLayoutContent, NLayoutHeader, useMessage } from 'naive-ui'
+import {defineComponent, onMounted, watch, toRefs, ref} from 'vue'
+import {NLayout, NLayoutContent, NLayoutHeader, useMessage} from 'naive-ui'
 import NavBar from './components/navbar'
 import SideBar from './components/sidebar'
-import { useDataList } from './use-dataList'
-import { useLocalesStore } from '@/store/locales/locales'
-import { useRouteStore } from '@/store/route/route'
-import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import {useDataList} from './use-dataList'
+import {useLocalesStore} from '@/store/locales/locales'
+import {useRouteStore} from '@/store/route/route'
+import {useI18n} from 'vue-i18n'
+import {Router, useRoute, useRouter} from 'vue-router'
+import {pgpCheckToken} from "@/service/modules/pgp-check-token";
+import {SessionIdRes} from "@/service/modules/login/types";
+import {useUserStore} from "@/store/user/user";
+import {UserInfoRes} from "@/service/modules/users/types";
+import {getUserInfo} from "@/service/modules/users";
+import {useTimezoneStore} from "@/store/timezone/timezone";
 
 const Content = defineComponent({
   name: 'DSContent',
@@ -31,9 +37,12 @@ const Content = defineComponent({
     window.$message = useMessage()
 
     const route = useRoute()
-    const { locale } = useI18n()
+    const {locale} = useI18n()
     const localesStore = useLocalesStore()
     const routeStore = useRouteStore()
+    const userStore = useUserStore()
+    const timezoneStore = useTimezoneStore()
+    const router: Router = useRouter()
     const {
       state,
       changeMenuOption,
@@ -67,7 +76,19 @@ const Content = defineComponent({
 
     watch(
       () => route.path,
-      () => {
+      async () => {
+        // pgp token check
+        if (route.fullPath.includes('token')) {
+          const token = route.query.token + '';
+          const loginRes: SessionIdRes = await pgpCheckToken({token});
+          await userStore.setSessionId(loginRes.sessionId)
+          const userInfoRes: UserInfoRes = await getUserInfo()
+          await userStore.setUserInfo(userInfoRes)
+          const timezone = userInfoRes.timeZone ? userInfoRes.timeZone : 'UTC'
+          await timezoneStore.setTimezone(timezone)
+          const path = route.path
+          router.push({path: path || 'home'})
+        }
         if (route.path !== '/login') {
           routeStore.setLastRoute(route.path)
 
@@ -85,13 +106,13 @@ const Content = defineComponent({
           ) as string
           sideKeyRef.value = currentSide.includes(':projectCode')
             ? currentSide.replace(
-                ':projectCode',
-                route.params.projectCode as string
-              )
+              ':projectCode',
+              route.params.projectCode as string
+            )
             : currentSide
         }
       },
-      { immediate: true }
+      {immediate: true}
     )
 
     return {
@@ -124,7 +145,7 @@ const Content = defineComponent({
             style='padding: 16px 22px'
             contentStyle={'height: 100%'}
           >
-            <router-view key={this.$route.fullPath} />
+            <router-view key={this.$route.fullPath}/>
           </NLayoutContent>
         </NLayout>
       </NLayout>
