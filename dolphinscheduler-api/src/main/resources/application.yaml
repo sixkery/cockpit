@@ -183,3 +183,6 @@ spring:
   quartz:
     properties:
       org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+
+---
+pgpUrl: http://172.2.0.96:9100/auth/validToken?token=
