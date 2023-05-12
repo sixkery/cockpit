@@ -14,3 +14,17 @@
 3. 启动 sh ./bin/install.sh
 4. 配置文件修改位置：scrip/env/dolphinscheduler_env.sh
 
+#配置资源中心（采用S3存储）
+1. 修改api-server配置文件信息，进入<service>/conf/common.properties
+resource.storage.type=S3
+aws.access.key.id=<your-access-key-id>
+aws.secret.access.key=<your-access-key-secret>
+aws.region=cn-north-1
+aws.endpoint=<your-endpoint-address>
+2. 对象存储Minio创建bucket: dolphinscheduler-test
+3. 重启api-server
+bash ./bin/dolphinscheduler-daemon.sh stop api-server
+bash ./bin/dolphinscheduler-daemon.sh start api-server
+4. 二次开发TODO
+org.apache.dolphinscheduler.common.utils.S3Utils中BUCKET_NAME值，改从<service>/conf/common.properties中读取。
+同时common.properties中添加aws.s3.bucket.name=<your-bucket-name>
