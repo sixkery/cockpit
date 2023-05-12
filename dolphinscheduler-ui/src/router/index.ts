@@ -28,6 +28,14 @@ import type { UserInfoRes } from '@/service/modules/users/types'
 // NProgress
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
+import {SessionIdRes} from "@/service/modules/login/types";
+import {pgpCheckToken} from "@/service/modules/pgp-check-token";
+import {getUserInfo} from "@/service/modules/users";
+import {useTimezoneStore} from "@/store/timezone/timezone";
+
+// import {pinia} from "./pinia"
+//
+// useUserStore(pinia)
 
 const router = createRouter({
   history: createWebHistory(
@@ -55,6 +63,23 @@ router.beforeEach(
     NProgress.start()
     const userStore = useUserStore()
     const metaData: metaData = to.meta
+    const timezoneStore = useTimezoneStore()
+
+    console.log('大哥，你进来没！')
+    console.log(to.query.token + '')
+    // pgp check token
+    if (to.fullPath.includes('token')) {
+      const token = to.query.token + '';
+      const loginRes: SessionIdRes = await pgpCheckToken({token});
+      await userStore.setSessionId(loginRes.sessionId)
+      const userInfoRes: UserInfoRes = await getUserInfo()
+      await userStore.setUserInfo(userInfoRes)
+      const timezone = userInfoRes.timeZone ? userInfoRes.timeZone : 'UTC'
+      await timezoneStore.setTimezone(timezone)
+      const path = to.path
+      console.log("1")
+      router.push({path: path || 'home'})
+    }
     if (
       metaData.auth?.includes('ADMIN_USER') &&
       (userStore.getUserInfo as UserInfoRes).userType !== 'ADMIN_USER' &&
