@@ -11,3 +11,5 @@
 编译部署
 1. 跳过测试，格式检测：mvn clean install -Prelease '-Dmaven.test.skip=true' '-Dcheckstyle.skip=true' '-Dmaven.javadoc.skip=true'
 2. 文件在 dolphinscheduler-dist/target/apache-dolphinscheduler-3.0.1-SNAPSHOT-bin.tar.gz
+3. 启动 sh ./bin/install.sh
+4. 配置文件修改位置：scrip/env/dolphinscheduler_env.sh

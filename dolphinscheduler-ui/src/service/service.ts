@@ -23,7 +23,7 @@ import cookies from 'js-cookie'
 import router from '@/router'
 import utils from '@/utils'
 
-const userStore = useUserStore()
+// const userStore = useUserStore()
 
 /**
  * @description Log and display errors
@@ -60,6 +60,8 @@ const service = axios.create(baseRequestConfig)
 
 const err = (err: AxiosError): Promise<AxiosError> => {
   if (err.response?.status === 401 || err.response?.status === 504) {
+
+    const userStore = useUserStore()
     userStore.setSessionId('')
     userStore.setUserInfo({})
     router.push({ path: '/login' })
@@ -69,6 +71,7 @@ const err = (err: AxiosError): Promise<AxiosError> => {
 }
 
 service.interceptors.request.use((config: AxiosRequestConfig<any>) => {
+  const userStore = useUserStore()
   config.headers && (config.headers.sessionId = userStore.getSessionId)
   const language = cookies.get('language')
   config.headers = config.headers || {}
