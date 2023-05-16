@@ -396,6 +396,8 @@ public class TaskConstants {
      */
     public static final String AWS_ACCESS_KEY_ID= "aws.access.key.id";
     public static final String AWS_SECRET_ACCESS_KEY= "aws.secret.access.key";
+    public static final String AWS_SECRET_ACCESS_BUCKET= "aws.s3.bucket.name";
+
     public static final String AWS_REGION = "aws.region";
 
     /**

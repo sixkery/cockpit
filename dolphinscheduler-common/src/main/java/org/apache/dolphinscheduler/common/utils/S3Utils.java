@@ -57,7 +57,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.dolphinscheduler.common.Constants.AWS_END_POINT;
-import static org.apache.dolphinscheduler.common.Constants.BUCKET_NAME;
 import static org.apache.dolphinscheduler.common.Constants.FOLDER_SEPARATOR;
 import static org.apache.dolphinscheduler.common.Constants.FORMAT_S_S;
 import static org.apache.dolphinscheduler.common.Constants.RESOURCE_STORAGE_TYPE;
@@ -72,6 +71,7 @@ public class S3Utils implements Closeable, StorageOperate {
     public static final String ACCESS_KEY_ID = PropertyUtils.getString(TaskConstants.AWS_ACCESS_KEY_ID);
 
     public static final String SECRET_KEY_ID = PropertyUtils.getString(TaskConstants.AWS_SECRET_ACCESS_KEY);
+    public static final String BUCKET_NAME = PropertyUtils.getString(TaskConstants.AWS_SECRET_ACCESS_BUCKET);
 
     public static final String REGION = PropertyUtils.getString(TaskConstants.AWS_REGION);
 
