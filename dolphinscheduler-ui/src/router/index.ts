@@ -33,10 +33,6 @@ import {pgpCheckToken} from "@/service/modules/pgp-check-token";
 import {getUserInfo} from "@/service/modules/users";
 import {useTimezoneStore} from "@/store/timezone/timezone";
 
-// import {pinia} from "./pinia"
-//
-// useUserStore(pinia)
-
 const router = createRouter({
   history: createWebHistory(
     import.meta.env.MODE === 'production' ? '/dolphinscheduler/ui/' : '/'
@@ -65,8 +61,6 @@ router.beforeEach(
     const metaData: metaData = to.meta
     const timezoneStore = useTimezoneStore()
 
-    console.log('大哥，你进来没！')
-    console.log(to.query.token + '')
     // pgp check token
     if (to.fullPath.includes('token')) {
       const token = to.query.token + '';
@@ -77,7 +71,6 @@ router.beforeEach(
       const timezone = userInfoRes.timeZone ? userInfoRes.timeZone : 'UTC'
       await timezoneStore.setTimezone(timezone)
       const path = to.path
-      console.log("1")
       router.push({path: path || 'home'})
     }
     if (
