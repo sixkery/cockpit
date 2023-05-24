@@ -56,10 +56,10 @@
             <artifactId>dolphinscheduler-data-quality</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.apache.dolphinscheduler</groupId>
-            <artifactId>dolphinscheduler-ui</artifactId>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.apache.dolphinscheduler</groupId>-->
+<!--            <artifactId>dolphinscheduler-ui</artifactId>-->
+<!--        </dependency>-->
 
         <dependency>
             <groupId>org.apache.dolphinscheduler</groupId>
