@@ -33,9 +33,13 @@
     </select>
     <select id="queryByUserNameAccurately" resultType="org.apache.dolphinscheduler.dao.entity.User">
         select
-        <include refid="baseSql"/>
-        from t_ds_user
-        where user_name=#{userName}
+        <include refid="baseSqlV2">
+            <property name="alias" value="u"/>
+        </include>
+        , t.tenant_code
+        from t_ds_user u
+        left join t_ds_tenant t on u.tenant_id = t.id
+        where u.user_name = #{userName}
     </select>
     <select id="queryUserByNamePassword" resultType="org.apache.dolphinscheduler.dao.entity.User">
         select
@@ -118,10 +122,12 @@
     <select id="selectByIds" resultType="org.apache.dolphinscheduler.dao.entity.User">
         select *
         from t_ds_user
-        where id in
-        <foreach item="id" index="index" collection="ids" open="(" separator="," close=")">
-            #{id}
-        </foreach>
+        <if test="ids != null and ids.size() != 0">
+            where id in
+            <foreach item="id" index="index" collection="ids" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
     </select>
     <select id="queryAuthedUserListByProjectId" resultType="org.apache.dolphinscheduler.dao.entity.User">
         select
@@ -130,5 +136,11 @@
         </include>
         from t_ds_user u, t_ds_relation_project_user rel
         where u.id = rel.user_id and rel.project_id = #{projectId}
+    </select>
+    <select id="queryEnabledUsers" resultType="org.apache.dolphinscheduler.dao.entity.User">
+        select
+        <include refid="baseSql"/>
+        from t_ds_user
+        where state = 1
     </select>
 </mapper>

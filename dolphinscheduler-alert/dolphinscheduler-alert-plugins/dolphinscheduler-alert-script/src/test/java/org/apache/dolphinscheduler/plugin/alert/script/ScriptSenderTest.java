@@ -25,6 +25,7 @@ import java.util.Map;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 
 /**
  * ScriptSenderTest
@@ -51,6 +52,41 @@ public class ScriptSenderTest {
         Assert.assertEquals("true", alertResult.getStatus());
         alertResult = scriptSender.sendScriptAlert("error msg title", "test content");
         Assert.assertEquals("false", alertResult.getStatus());
+    }
+
+    @Test
+    public void testScriptSenderInjectionTest() {
+        scriptConfig.put(ScriptParamsConstants.NAME_SCRIPT_USER_PARAMS, "' ; calc.exe ; '");
+        ScriptSender scriptSender = new ScriptSender(scriptConfig);
+        AlertResult alertResult = scriptSender.sendScriptAlert("test title Kris", "test content");
+        Assert.assertEquals("false", alertResult.getStatus());
+    }
+
+    @Test
+    public void testUserParamsNPE() {
+        scriptConfig.put(ScriptParamsConstants.NAME_SCRIPT_USER_PARAMS, null);
+        ScriptSender scriptSender = new ScriptSender(scriptConfig);
+        AlertResult alertResult;
+        alertResult = scriptSender.sendScriptAlert("test user params NPE", "test content");
+        Assertions.assertEquals("true", alertResult.getStatus());
+    }
+
+    @Test
+    public void testPathNPE() {
+        scriptConfig.put(ScriptParamsConstants.NAME_SCRIPT_PATH, null);
+        ScriptSender scriptSender = new ScriptSender(scriptConfig);
+        AlertResult alertResult;
+        alertResult = scriptSender.sendScriptAlert("test path NPE", "test content");
+        Assertions.assertEquals("false", alertResult.getStatus());
+    }
+
+    @Test
+    public void testTypeIsError() {
+        scriptConfig.put(ScriptParamsConstants.NAME_SCRIPT_TYPE, null);
+        ScriptSender scriptSender = new ScriptSender(scriptConfig);
+        AlertResult alertResult;
+        alertResult = scriptSender.sendScriptAlert("test type is error", "test content");
+        Assertions.assertEquals("false", alertResult.getStatus());
     }
 
 }

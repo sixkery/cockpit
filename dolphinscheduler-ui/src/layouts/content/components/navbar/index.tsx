@@ -67,7 +67,8 @@ const Navbar = defineComponent({
   render() {
     return (
       <div class={styles.container}>
-        <Logo />
+        {/*<Logo />*/}
+        <div class={styles.title}>灯塔调度</div>
         <div class={styles.nav}>
           <NMenu
             value={this.menuKey}
@@ -77,9 +78,9 @@ const Navbar = defineComponent({
           />
         </div>
         <div class={styles.settings}>
-          <Theme />
-          <Locales localesOptions={this.localesOptions} />
-          <Timezone timezoneOptions={this.timezoneOptions} />
+          {/*<Theme />*/}
+          {/*<Locales localesOptions={this.localesOptions} />*/}
+          {/*<Timezone timezoneOptions={this.timezoneOptions} />*/}
           <User userDropdownOptions={this.userDropdownOptions} />
         </div>
       </div>

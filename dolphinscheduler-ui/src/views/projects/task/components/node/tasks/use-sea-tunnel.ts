@@ -42,33 +42,49 @@ export function useSeaTunnel({
     failRetryInterval: 1,
     failRetryTimes: 0,
     workerGroup: 'default',
+    cpuQuota: -1,
+    memoryMax: -1,
     delayTime: 0,
     timeout: 30,
+    startupScript: 'seatunnel.sh',
+    runMode: 'RUN',
+    useCustom: true,
     deployMode: 'client',
-    queue: 'default',
-    master: 'yarn',
+    master: 'YARN',
     masterUrl: '',
-    resourceFiles: []
+    resourceFiles: [],
+    timeoutNotifyStrategy: ['WARN'],
+    rawScript:
+      'env {\n' +
+        '  execution.parallelism = 2\n' +
+        '  job.mode = "BATCH"\n' +
+        '  checkpoint.interval = 10000\n' +
+        '}\n' +
+        '\n' +
+        'source {\n' +
+        '  FakeSource {\n' +
+        '    parallelism = 2\n' +
+        '    result_table_name = "fake"\n' +
+        '    row.num = 16\n' +
+        '    schema = {\n' +
+        '      fields {\n' +
+        '        name = "string"\n' +
+        '        age = "int"\n' +
+        '      }\n' +
+        '    }\n' +
+        '  }\n' +
+        '}\n' +
+        '\n' +
+        'sink {\n' +
+        '  Console {\n' +
+        '  }\n' +
+        '}'
   } as INodeData)
-
-  let extra: IJsonItem[] = []
-  if (from === 1) {
-    extra = [
-      Fields.useTaskType(model, readonly),
-      Fields.useProcessName({
-        model,
-        projectCode,
-        isCreate: !data?.id,
-        from,
-        processName: data?.processName
-      })
-    ]
-  }
 
   return {
     json: [
       Fields.useName(from),
-      ...extra,
+      ...Fields.useTaskDefinition({ projectCode, from, readonly, data, model }),
       Fields.useRunFlag(),
       Fields.useDescription(),
       Fields.useTaskPriority(),
@@ -76,6 +92,7 @@ export function useSeaTunnel({
       Fields.useEnvironmentName(model, !model.id),
       ...Fields.useTaskGroup(model, projectCode),
       ...Fields.useFailed(),
+      ...Fields.useResourceLimit(),
       Fields.useDelayTime(model),
       ...Fields.useTimeoutAlarm(model),
       ...Fields.useSeaTunnel(model),

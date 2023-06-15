@@ -21,6 +21,7 @@ import static java.util.stream.Collectors.toMap;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.google.common.base.Functions;
@@ -37,6 +38,7 @@ public enum DbType {
     PRESTO(8, "presto"),
     H2(9, "h2"),
     REDSHIFT(10,"redshift"),
+    ATHENA(11,"athena"),
     ;
 
     @EnumValue
@@ -64,6 +66,10 @@ public enum DbType {
             return DB_TYPE_MAP.get(type);
         }
         return null;
+    }
+
+    public static DbType ofName(String name) {
+        return Arrays.stream(DbType.values()).filter(e -> e.name().equals(name)).findFirst().orElseThrow(() -> new NoSuchElementException("no such db type"));
     }
 
     public boolean isHive() {

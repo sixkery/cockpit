@@ -22,6 +22,7 @@ import org.apache.dolphinscheduler.alert.api.AlertData;
 import org.apache.dolphinscheduler.alert.api.AlertInfo;
 import org.apache.dolphinscheduler.alert.api.AlertResult;
 import org.apache.dolphinscheduler.alert.api.ShowType;
+import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.spi.params.PasswordParam;
 import org.apache.dolphinscheduler.spi.params.PluginParamsTransfer;
 import org.apache.dolphinscheduler.spi.params.base.ParamsOptions;
@@ -29,7 +30,6 @@ import org.apache.dolphinscheduler.spi.params.base.PluginParams;
 import org.apache.dolphinscheduler.spi.params.base.Validate;
 import org.apache.dolphinscheduler.spi.params.input.InputParam;
 import org.apache.dolphinscheduler.spi.params.radio.RadioParam;
-import org.apache.dolphinscheduler.spi.utils.JSONUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -43,7 +43,6 @@ public class EmailAlertChannelTest {
     @Test
     public void testProcess() {
         EmailAlertChannel emailAlertChannel = new EmailAlertChannel();
-        AlertData alertData = new AlertData();
         LinkedHashMap<String, Object> map1 = new LinkedHashMap<>();
         map1.put("mysql service name", "mysql200");
         map1.put("mysql address", "192.168.xx.xx");
@@ -54,10 +53,12 @@ public class EmailAlertChannelTest {
         maps.add(0, map1);
         String mapjson = JSONUtils.toJsonString(maps);
 
-        alertData.setId(10)
-                 .setContent(mapjson)
-                 .setLog("10")
-                 .setTitle("test");
+        AlertData alertData = AlertData.builder()
+                .id(10)
+                .content(mapjson)
+                .log("10")
+                .title("test")
+                .build();
         AlertInfo alertInfo = new AlertInfo();
         alertInfo.setAlertData(alertData);
         Map<String, String> paramsMap = PluginParamsTransfer.getPluginParamsMap(getEmailAlertParams());

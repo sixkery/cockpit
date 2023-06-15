@@ -1,5 +1,5 @@
 package org.apache.dolphinscheduler.api.controller;
-import static org.apache.dolphinscheduler.api.enums.Status.IP_IS_EMPTY;
+
 import io.micrometer.core.instrument.util.StringUtils;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
@@ -15,15 +15,19 @@ import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
 import java.util.Map;
 
+import static org.apache.dolphinscheduler.api.enums.Status.IP_IS_EMPTY;
 import static org.apache.dolphinscheduler.api.enums.Status.USER_LOGIN_FAILURE;
+
 
 /**
  * PGP 跳转 ds 验证 token 控制器
@@ -35,7 +39,6 @@ import static org.apache.dolphinscheduler.api.enums.Status.USER_LOGIN_FAILURE;
 @RestController
 @RequestMapping("/pgp")
 public class PGPController extends BaseController {
-
     @Autowired
     private Authenticator authenticator;
 
@@ -89,3 +92,5 @@ public class PGPController extends BaseController {
         return result;
     }
 }
+
+

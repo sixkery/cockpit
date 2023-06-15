@@ -25,6 +25,7 @@ import org.apache.dolphinscheduler.remote.exceptions.RemotingException;
 import org.apache.dolphinscheduler.remote.utils.Host;
 import org.apache.dolphinscheduler.server.worker.processor.TaskExecuteResultAckProcessor;
 import org.apache.dolphinscheduler.server.worker.processor.TaskExecuteRunningAckProcessor;
+import org.apache.dolphinscheduler.server.worker.processor.TaskRejectAckProcessor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +46,9 @@ public class WorkerRpcClient implements AutoCloseable {
     @Autowired
     private TaskExecuteResultAckProcessor taskExecuteResultAckProcessor;
 
+    @Autowired
+    private TaskRejectAckProcessor taskRejectAckProcessor;
+
     private NettyRemotingClient nettyRemotingClient;
 
     public void start() {
@@ -55,6 +59,7 @@ public class WorkerRpcClient implements AutoCloseable {
         this.nettyRemotingClient.registerProcessor(CommandType.TASK_EXECUTE_RUNNING_ACK,
                                                    taskExecuteRunningAckProcessor);
         this.nettyRemotingClient.registerProcessor(CommandType.TASK_EXECUTE_RESULT_ACK, taskExecuteResultAckProcessor);
+        this.nettyRemotingClient.registerProcessor(CommandType.TASK_REJECT_ACK, taskRejectAckProcessor);
         logger.info("Worker rpc client started");
     }
 

@@ -17,27 +17,37 @@
 
 package org.apache.dolphinscheduler.server.worker.message;
 
-import org.apache.dolphinscheduler.common.Constants;
+import lombok.NonNull;
+
+import org.apache.dolphinscheduler.common.constants.Constants;
+import org.apache.dolphinscheduler.common.lifecycle.ServerLifeCycleManager;
 import org.apache.dolphinscheduler.common.thread.BaseDaemonThread;
-import org.apache.dolphinscheduler.common.thread.Stopper;
-import org.apache.dolphinscheduler.common.utils.LoggerUtils;
 import org.apache.dolphinscheduler.remote.command.BaseCommand;
 import org.apache.dolphinscheduler.remote.command.CommandType;
+import org.apache.dolphinscheduler.service.utils.LoggerUtils;
+
+import org.apache.commons.collections.MapUtils;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.annotation.PostConstruct;
+import lombok.NonNull;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
-import lombok.NonNull;
+import javax.annotation.PostConstruct;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class MessageRetryRunner extends BaseDaemonThread {
@@ -50,32 +60,28 @@ public class MessageRetryRunner extends BaseDaemonThread {
 
     private static long MESSAGE_RETRY_WINDOW = Duration.ofMinutes(5L).toMillis();
 
+    @Lazy
     @Autowired
-    private ApplicationContext applicationContext;
+    private List<MessageSender> messageSenders;
 
     private Map<CommandType, MessageSender<BaseCommand>> messageSenderMap = new HashMap<>();
 
     private Map<Integer, Map<CommandType, BaseCommand>> needToRetryMessages = new ConcurrentHashMap<>();
 
-    @PostConstruct
-    public void init() {
-        Map<String, MessageSender> messageSenders = applicationContext.getBeansOfType(MessageSender.class);
-        messageSenders.values().forEach(messageSender -> {
-            messageSenderMap.put(messageSender.getMessageType(), messageSender);
-            logger.info("Injected message sender: {}", messageSender.getClass().getName());
-        });
-    }
-
     @Override
     public synchronized void start() {
         logger.info("Message retry runner staring");
+        messageSenders.forEach(messageSender -> {
+            messageSenderMap.put(messageSender.getMessageType(), messageSender);
+            logger.info("Injected message sender: {}", messageSender.getClass().getName());
+        });
         super.start();
         logger.info("Message retry runner started");
     }
 
     public void addRetryMessage(int taskInstanceId, @NonNull CommandType messageType, BaseCommand baseCommand) {
         needToRetryMessages.computeIfAbsent(taskInstanceId, k -> new ConcurrentHashMap<>()).put(messageType,
-                                                                                                baseCommand);
+                baseCommand);
     }
 
     public void removeRetryMessage(int taskInstanceId, @NonNull CommandType messageType) {
@@ -99,9 +105,9 @@ public class MessageRetryRunner extends BaseDaemonThread {
     }
 
     public void run() {
-        while (Stopper.isRunning()) {
+        while (!ServerLifeCycleManager.isStopped()) {
             try {
-                if (needToRetryMessages.isEmpty()) {
+                if (MapUtils.isEmpty(needToRetryMessages)) {
                     Thread.sleep(MESSAGE_RETRY_WINDOW);
                 }
 
@@ -135,5 +141,9 @@ public class MessageRetryRunner extends BaseDaemonThread {
                 logger.error("Retry send message failed, get an known exception.", ex);
             }
         }
+    }
+
+    public void clearMessage() {
+        needToRetryMessages.clear();
     }
 }

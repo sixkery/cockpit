@@ -62,17 +62,19 @@ router.beforeEach(
     const timezoneStore = useTimezoneStore()
 
     // pgp check token
-    if (to.fullPath.includes('token')) {
-      const token = to.query.token + '';
+    console.log("222222222")
+    if (to.fullPath.includes('pgp_token')) {
+      const token = to.query.pgp_token + '';
       const loginRes: SessionIdRes = await pgpCheckToken({token});
       await userStore.setSessionId(loginRes.sessionId)
       const userInfoRes: UserInfoRes = await getUserInfo()
       await userStore.setUserInfo(userInfoRes)
+      await userStore.setPgpToken(true)
       const timezone = userInfoRes.timeZone ? userInfoRes.timeZone : 'UTC'
       await timezoneStore.setTimezone(timezone)
       const path = to.path
+      console.log("111111111")
       router.push({path: path || 'home'})
-    }
     if (
       metaData.auth?.includes('ADMIN_USER') &&
       (userStore.getUserInfo as UserInfoRes).userType !== 'ADMIN_USER' &&

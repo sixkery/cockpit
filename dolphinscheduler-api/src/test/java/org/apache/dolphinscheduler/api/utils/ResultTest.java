@@ -16,13 +16,14 @@
  */
 package org.apache.dolphinscheduler.api.utils;
 
+import static org.junit.Assert.*;
+
 import org.apache.dolphinscheduler.api.enums.Status;
-import org.junit.Assert;
-import org.junit.Test;
 
 import java.util.HashMap;
 
-import static org.junit.Assert.*;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class ResultTest {
 

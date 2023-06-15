@@ -262,7 +262,7 @@ CREATE TABLE t_ds_command (
   start_time                timestamp DEFAULT NULL ,
   executor_id               int DEFAULT NULL ,
   update_time               timestamp DEFAULT NULL ,
-  process_instance_priority int DEFAULT NULL ,
+  process_instance_priority int DEFAULT '2' ,
   worker_group              varchar(64),
   environment_code          bigint DEFAULT '-1',
   dry_run                   int DEFAULT '0' ,
@@ -309,7 +309,7 @@ CREATE TABLE t_ds_error_command (
   start_time                timestamp DEFAULT NULL ,
   executor_id               int DEFAULT NULL ,
   update_time               timestamp DEFAULT NULL ,
-  process_instance_priority int DEFAULT NULL ,
+  process_instance_priority int DEFAULT '2' ,
   worker_group              varchar(64),
   environment_code          bigint DEFAULT '-1',
   dry_run                   int DEFAULT '0' ,
@@ -376,6 +376,8 @@ CREATE TABLE t_ds_process_definition_log (
   PRIMARY KEY (id)
 ) ;
 
+create UNIQUE index uniq_idx_code_version on t_ds_process_definition_log (code,version);
+
 --
 -- Table structure for table t_ds_task_definition
 --
@@ -390,9 +392,10 @@ CREATE TABLE t_ds_task_definition (
   project_code bigint DEFAULT NULL ,
   user_id int DEFAULT NULL ,
   task_type varchar(50) DEFAULT NULL ,
+  task_execute_type int DEFAULT '0',
   task_params text ,
   flag int DEFAULT NULL ,
-  task_priority int DEFAULT NULL ,
+  task_priority int DEFAULT '2' ,
   worker_group varchar(255) DEFAULT NULL ,
   environment_code bigint DEFAULT '-1',
   fail_retry_times int DEFAULT NULL ,
@@ -404,6 +407,8 @@ CREATE TABLE t_ds_task_definition (
   task_group_id int DEFAULT NULL,
   task_group_priority int DEFAULT '0',
   resource_ids text ,
+  cpu_quota int DEFAULT '-1' NOT NULL,
+  memory_max int DEFAULT '-1' NOT NULL,
   create_time timestamp DEFAULT NULL ,
   update_time timestamp DEFAULT NULL ,
   PRIMARY KEY (id)
@@ -425,9 +430,10 @@ CREATE TABLE t_ds_task_definition_log (
   project_code bigint DEFAULT NULL ,
   user_id int DEFAULT NULL ,
   task_type varchar(50) DEFAULT NULL ,
+  task_execute_type int DEFAULT '0',
   task_params text ,
   flag int DEFAULT NULL ,
-  task_priority int DEFAULT NULL ,
+  task_priority int DEFAULT '2' ,
   worker_group varchar(255) DEFAULT NULL ,
   environment_code bigint DEFAULT '-1',
   fail_retry_times int DEFAULT NULL ,
@@ -441,6 +447,8 @@ CREATE TABLE t_ds_task_definition_log (
   task_group_id int DEFAULT NULL,
   task_group_priority int DEFAULT '0',
   operate_time timestamp DEFAULT NULL ,
+  cpu_quota int DEFAULT '-1' NOT NULL,
+  memory_max int DEFAULT '-1' NOT NULL,
   create_time timestamp DEFAULT NULL ,
   update_time timestamp DEFAULT NULL ,
   PRIMARY KEY (id)
@@ -512,6 +520,7 @@ CREATE TABLE t_ds_process_instance (
   process_definition_code bigint DEFAULT NULL ,
   process_definition_version int DEFAULT NULL ,
   state int DEFAULT NULL ,
+  state_history text,
   recovery int DEFAULT NULL ,
   start_time timestamp DEFAULT NULL ,
   end_time timestamp DEFAULT NULL ,
@@ -534,7 +543,7 @@ CREATE TABLE t_ds_process_instance (
   executor_id int NOT NULL ,
   history_cmd text ,
   dependence_schedule_times text ,
-  process_instance_priority int DEFAULT NULL ,
+  process_instance_priority int DEFAULT '2' ,
   worker_group varchar(64) ,
   environment_code bigint DEFAULT '-1',
   timeout int DEFAULT '0' ,
@@ -558,7 +567,7 @@ CREATE TABLE t_ds_project (
   id int NOT NULL  ,
   name varchar(100) DEFAULT NULL ,
   code bigint NOT NULL,
-  description varchar(200) DEFAULT NULL ,
+  description varchar(255) DEFAULT NULL ,
   user_id int DEFAULT NULL ,
   flag int DEFAULT '1' ,
   create_time timestamp DEFAULT CURRENT_TIMESTAMP ,
@@ -613,6 +622,8 @@ CREATE TABLE t_ds_relation_process_instance (
   process_instance_id int DEFAULT NULL ,
   PRIMARY KEY (id)
 ) ;
+create index idx_relation_process_instance_parent_process_task on t_ds_relation_process_instance (parent_process_instance_id, parent_task_instance_id);
+create index idx_relation_process_instance_process_instance_id on t_ds_relation_process_instance (process_instance_id);
 
 
 --
@@ -703,7 +714,7 @@ CREATE TABLE t_ds_schedules (
   release_state int NOT NULL ,
   warning_type int NOT NULL ,
   warning_group_id int DEFAULT NULL ,
-  process_instance_priority int DEFAULT NULL ,
+  process_instance_priority int DEFAULT '2' ,
   worker_group varchar(64),
   environment_code bigint DEFAULT '-1',
   create_time timestamp NOT NULL ,
@@ -733,6 +744,7 @@ CREATE TABLE t_ds_task_instance (
   id int NOT NULL  ,
   name varchar(255) DEFAULT NULL ,
   task_type varchar(50) DEFAULT NULL ,
+  task_execute_type int DEFAULT '0',
   task_code bigint NOT NULL,
   task_definition_version int DEFAULT NULL ,
   process_instance_id int DEFAULT NULL ,
@@ -761,8 +773,9 @@ CREATE TABLE t_ds_task_instance (
   task_group_id int DEFAULT NULL,
   var_pool text ,
   dry_run int DEFAULT '0' ,
-  PRIMARY KEY (id),
-  CONSTRAINT foreign_key_instance_id FOREIGN KEY(process_instance_id) REFERENCES t_ds_process_instance(id) ON DELETE CASCADE
+  cpu_quota int DEFAULT '-1' NOT NULL,
+  memory_max int DEFAULT '-1' NOT NULL,
+  PRIMARY KEY (id)
 ) ;
 
 create index idx_task_instance_code_version on t_ds_task_instance (task_code, task_definition_version);
@@ -852,6 +865,8 @@ CREATE TABLE t_ds_worker_group (
   addr_list text DEFAULT NULL ,
   create_time timestamp DEFAULT NULL ,
   update_time timestamp DEFAULT NULL ,
+  description text  DEFAULT NULL,
+  other_params_json text  DEFAULT NULL,
   PRIMARY KEY (id) ,
   CONSTRAINT name_unique UNIQUE (name)
 ) ;
@@ -958,7 +973,7 @@ INSERT INTO t_ds_queue(queue_name, queue, create_time, update_time)
 VALUES ('default', 'default', '2018-11-29 10:22:33', '2018-11-29 10:22:33');
 
 -- Records of t_ds_queue,default queue name : default
-INSERT INTO t_ds_version(version) VALUES ('3.0.0');
+INSERT INTO t_ds_version(version) VALUES ('3.1.7');
 
 --
 -- Table structure for table t_ds_plugin_define
@@ -1826,7 +1841,7 @@ DROP TABLE IF EXISTS t_ds_task_group;
 CREATE TABLE t_ds_task_group (
    id serial NOT NULL,
    name        varchar(100) DEFAULT NULL ,
-   description varchar(200) DEFAULT NULL ,
+   description varchar(255) DEFAULT NULL ,
    group_size  int NOT NULL ,
    project_code bigint DEFAULT '0' ,
    use_size    int DEFAULT '0' ,
@@ -1872,20 +1887,21 @@ CREATE TABLE t_ds_k8s (
 DROP TABLE IF EXISTS t_ds_k8s_namespace;
 CREATE TABLE t_ds_k8s_namespace (
    id serial NOT NULL,
+   code               bigint  NOT NULL,
    limits_memory      int DEFAULT NULL ,
    namespace          varchar(100) DEFAULT NULL ,
-   online_job_num     int DEFAULT '0' ,
    user_id            int DEFAULT NULL,
    pod_replicas       int DEFAULT NULL,
    pod_request_cpu    NUMERIC(13,4) NULL,
    pod_request_memory int DEFAULT NULL,
    limits_cpu         NUMERIC(13,4) NULL,
-   k8s                varchar(100) DEFAULT NULL,
+   cluster_code       bigint  NOT NULL,
    create_time        timestamp DEFAULT NULL ,
    update_time        timestamp DEFAULT NULL ,
    PRIMARY KEY (id) ,
-   CONSTRAINT k8s_namespace_unique UNIQUE (namespace,k8s)
+   CONSTRAINT k8s_namespace_unique UNIQUE (namespace,cluster_code)
 );
+
 
 --
 -- Table structure for table t_ds_relation_namespace_user
@@ -1916,4 +1932,37 @@ CREATE TABLE t_ds_alert_send_status (
     create_time                  timestamp DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT alert_send_status_unique UNIQUE (alert_id,alert_plugin_instance_id)
+);
+
+
+--
+-- Table structure for table t_ds_cluster
+--
+
+DROP TABLE IF EXISTS t_ds_cluster;
+CREATE TABLE t_ds_cluster(
+                             id          serial NOT NULL,
+                             code        bigint NOT NULL,
+                             name        varchar(100) DEFAULT NULL,
+                             config      text         DEFAULT NULL,
+                             description text,
+                             operator    int          DEFAULT NULL,
+                             create_time timestamp    DEFAULT NULL,
+                             update_time timestamp    DEFAULT NULL,
+                             PRIMARY KEY (id),
+                             CONSTRAINT cluster_name_unique UNIQUE (name),
+                             CONSTRAINT cluster_code_unique UNIQUE (code)
+);
+
+--
+-- Table structure for t_ds_fav_task
+--
+
+DROP TABLE IF EXISTS t_ds_fav_task;
+CREATE TABLE t_ds_fav_task
+(
+    id        serial      NOT NULL,
+    task_name varchar(64) NOT NULL,
+    user_id   int         NOT NULL,
+    PRIMARY KEY (id)
 );

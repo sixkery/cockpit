@@ -22,6 +22,7 @@ import {
   onMounted,
   ref,
   Ref,
+  getCurrentInstance
 } from 'vue'
 import { NForm, NFormItem, NInput, NSelect, NInputNumber } from 'naive-ui'
 import { useForm } from '../use-form'
@@ -94,7 +95,9 @@ const FormModal = defineComponent({
       emit('cancel')
     }
 
-    return { ...toRefs(state), t, onConfirm, onCancel, projectOptions }
+    const trim = getCurrentInstance()?.appContext.config.globalProperties.trim
+
+    return { ...toRefs(state), t, onConfirm, onCancel, projectOptions, trim }
   },
   render() {
     const { t, onConfirm, onCancel, show, status, projectOptions } = this
@@ -118,6 +121,7 @@ const FormModal = defineComponent({
         <NForm rules={this.rules} ref='formRef'>
           <NFormItem label={t('resource.task_group_option.name')} path='name'>
             <NInput
+              allowInput={this.trim}
               v-model={[this.formData.name, 'value']}
               placeholder={t('resource.task_group_option.please_enter_name')}
             />
@@ -154,6 +158,7 @@ const FormModal = defineComponent({
             path='description'
           >
             <NInput
+              allowInput={this.trim}
               v-model={[this.formData.description, 'value']}
               type='textarea'
               placeholder={t('resource.task_group_option.please_enter_desc')}

@@ -19,7 +19,7 @@ package org.apache.dolphinscheduler.plugin.alert.webexteams;
 
 import org.apache.dolphinscheduler.alert.api.AlertData;
 import org.apache.dolphinscheduler.alert.api.AlertResult;
-import org.apache.dolphinscheduler.spi.utils.JSONUtils;
+import org.apache.dolphinscheduler.common.utils.JSONUtils;
 
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -156,7 +156,7 @@ public final class WebexTeamsSender {
             for (Map map : list) {
                 for (Map.Entry<String, Object> entry : (Iterable<Map.Entry<String, Object>>) map.entrySet()) {
                     String key = entry.getKey();
-                    String value = entry.getValue().toString();
+                    String value = entry.getValue() == null ? "" : entry.getValue().toString();
                     contents.append(key).append(":").append(value);
                     contents.append("\n");
                 }

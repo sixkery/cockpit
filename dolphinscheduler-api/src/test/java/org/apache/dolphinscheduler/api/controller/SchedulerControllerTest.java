@@ -119,8 +119,9 @@ public class SchedulerControllerTest extends AbstractControllerTest {
         MultiValueMap<String, String> paramsMap = new LinkedMultiValueMap<>();
         paramsMap.add("id","37");
 
-        Mockito.when(schedulerService.setScheduleState(isA(User.class), isA(Long.class), isA(Integer.class),
-                isA(ReleaseState.class))).thenReturn(success());
+        Mockito.doNothing().when(schedulerService).setScheduleState(isA(User.class), isA(Long.class),
+                isA(Integer.class),
+                isA(ReleaseState.class));
 
         MvcResult mvcResult = mockMvc.perform(post("/projects/{projectCode}/schedules/{id}/online",123, 37)
                 .header(SESSION_ID, sessionId)
@@ -139,8 +140,9 @@ public class SchedulerControllerTest extends AbstractControllerTest {
         MultiValueMap<String, String> paramsMap = new LinkedMultiValueMap<>();
         paramsMap.add("id","28");
 
-        Mockito.when(schedulerService.setScheduleState(isA(User.class), isA(Long.class), isA(Integer.class),
-                isA(ReleaseState.class))).thenReturn(success());
+        Mockito.doNothing().when(schedulerService).setScheduleState(isA(User.class), isA(Long.class),
+                isA(Integer.class),
+                isA(ReleaseState.class));
 
         MvcResult mvcResult = mockMvc.perform(post("/projects/{projectCode}/schedules/{id}/offline",123, 28)
                 .header(SESSION_ID, sessionId)
@@ -202,7 +204,7 @@ public class SchedulerControllerTest extends AbstractControllerTest {
 
         MvcResult mvcResult = mockMvc.perform(post("/projects/{projectCode}/schedules/preview",123)
                 .header(SESSION_ID, sessionId)
-                .param("schedule","{'startTime':'2019-06-10 00:00:00','endTime':'2019-06-13 00:00:00','crontab':'0 0 3/6 * * ? *'}"))
+                .param("schedule","{'startTime':'2019-06-10 00:00:00','endTime':'2019-06-13 00:00:00','crontab':'0 0 3/6 * * ? *','timezoneId':'Asia/Shanghai'}"))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();

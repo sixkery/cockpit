@@ -17,7 +17,8 @@
 
 package org.apache.dolphinscheduler.common.utils;
 
-import org.apache.dolphinscheduler.common.Constants;
+import org.apache.dolphinscheduler.common.constants.Constants;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.client.config.AuthSchemes;
 import org.apache.http.client.config.CookieSpecs;
@@ -31,21 +32,24 @@ import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.EntityUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Objects;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * http utils
@@ -63,9 +67,12 @@ public class HttpUtils {
     }
 
     private static class HttpClientInstance {
-        private static final CloseableHttpClient httpClient = HttpClients.custom().setConnectionManager(cm).setDefaultRequestConfig(requestConfig).build();
+        private static final CloseableHttpClient httpClient = getHttpClientBuilder().build();
     }
 
+    public static HttpClientBuilder getHttpClientBuilder() {
+        return HttpClients.custom().setConnectionManager(cm).setDefaultRequestConfig(requestConfig);
+    }
 
     private static PoolingHttpClientConnectionManager cm;
 
@@ -95,7 +102,7 @@ public class HttpUtils {
     static {
         try {
             ctx = SSLContext.getInstance(SSLConnectionSocketFactory.TLS);
-            ctx.init(null, new TrustManager[]{xtm}, null);
+            ctx.init(null, new TrustManager[] {xtm}, null);
         } catch (NoSuchAlgorithmException e) {
             logger.error("SSLContext init with NoSuchAlgorithmException", e);
         } catch (KeyManagementException e) {
@@ -104,14 +111,14 @@ public class HttpUtils {
         socketFactory = new SSLConnectionSocketFactory(ctx, NoopHostnameVerifier.INSTANCE);
         /** set timeout、request time、socket timeout */
         requestConfig = RequestConfig.custom().setCookieSpec(CookieSpecs.IGNORE_COOKIES)
-                .setExpectContinueEnabled(Boolean.TRUE)
-                .setTargetPreferredAuthSchemes(Arrays.asList(AuthSchemes.NTLM, AuthSchemes.DIGEST))
-                .setProxyPreferredAuthSchemes(Arrays.asList(AuthSchemes.BASIC))
-                .setConnectTimeout(Constants.HTTP_CONNECT_TIMEOUT).setSocketTimeout(Constants.SOCKET_TIMEOUT)
-                .setConnectionRequestTimeout(Constants.HTTP_CONNECTION_REQUEST_TIMEOUT).setRedirectsEnabled(true)
-                .build();
+            .setExpectContinueEnabled(Boolean.TRUE)
+            .setTargetPreferredAuthSchemes(Arrays.asList(AuthSchemes.NTLM, AuthSchemes.DIGEST, AuthSchemes.SPNEGO))
+            .setProxyPreferredAuthSchemes(Arrays.asList(AuthSchemes.BASIC, AuthSchemes.SPNEGO))
+            .setConnectTimeout(Constants.HTTP_CONNECT_TIMEOUT).setSocketTimeout(Constants.SOCKET_TIMEOUT)
+            .setConnectionRequestTimeout(Constants.HTTP_CONNECTION_REQUEST_TIMEOUT).setRedirectsEnabled(true)
+            .build();
         socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
-                .register("http", PlainConnectionSocketFactory.INSTANCE).register("https", socketFactory).build();
+            .register("http", PlainConnectionSocketFactory.INSTANCE).register("https", socketFactory).build();
         cm = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
         cm.setDefaultMaxPerRoute(60);
         cm.setMaxTotal(100);

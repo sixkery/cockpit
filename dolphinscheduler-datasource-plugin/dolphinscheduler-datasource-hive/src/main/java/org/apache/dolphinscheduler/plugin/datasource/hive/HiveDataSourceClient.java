@@ -21,15 +21,17 @@ import static org.apache.dolphinscheduler.plugin.task.api.TaskConstants.HADOOP_S
 import static org.apache.dolphinscheduler.plugin.task.api.TaskConstants.JAVA_SECURITY_KRB5_CONF;
 import static org.apache.dolphinscheduler.plugin.task.api.TaskConstants.JAVA_SECURITY_KRB5_CONF_PATH;
 
+import org.apache.dolphinscheduler.common.constants.Constants;
+import org.apache.dolphinscheduler.common.utils.PropertyUtils;
 import org.apache.dolphinscheduler.plugin.datasource.api.client.CommonDataSourceClient;
 import org.apache.dolphinscheduler.plugin.datasource.api.provider.JDBCDataSourceProvider;
-import org.apache.dolphinscheduler.plugin.datasource.utils.CommonUtil;
+import org.apache.dolphinscheduler.plugin.datasource.hive.utils.CommonUtil;
 import org.apache.dolphinscheduler.spi.datasource.BaseConnectionParam;
 import org.apache.dolphinscheduler.spi.enums.DbType;
-import org.apache.dolphinscheduler.spi.utils.Constants;
-import org.apache.dolphinscheduler.spi.utils.PropertyUtils;
-import org.apache.dolphinscheduler.spi.utils.StringUtils;
 
+import sun.security.krb5.Config;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
 
@@ -43,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
@@ -79,8 +82,8 @@ public class HiveDataSourceClient extends CommonDataSourceClient {
         this.ugi = createUserGroupInformation(baseConnectionParam.getUser());
         logger.info("Create ugi success.");
 
-        super.initClient(baseConnectionParam, dbType);
         this.dataSource = JDBCDataSourceProvider.createOneSessionJdbcDataSource(baseConnectionParam, dbType);
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
         logger.info("Init {} success.", getClass().getName());
     }
 
@@ -165,10 +168,13 @@ public class HiveDataSourceClient extends CommonDataSourceClient {
 
     @Override
     public void close() {
-        super.close();
+        try {
+            super.close();
+        } finally {
+            kerberosRenewalService.shutdown();
+            this.ugi = null;
+        }
+        logger.info("Closed Hive datasource client.");
 
-        logger.info("close {}.", this.getClass().getSimpleName());
-        kerberosRenewalService.shutdown();
-        this.ugi = null;
     }
 }

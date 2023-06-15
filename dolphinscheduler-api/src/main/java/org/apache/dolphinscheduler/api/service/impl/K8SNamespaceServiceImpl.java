@@ -18,16 +18,21 @@
 package org.apache.dolphinscheduler.api.service.impl;
 
 import org.apache.dolphinscheduler.api.enums.Status;
+import org.apache.dolphinscheduler.api.k8s.K8sClientService;
 import org.apache.dolphinscheduler.api.service.K8sNamespaceService;
 import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.api.utils.Result;
-import org.apache.dolphinscheduler.common.Constants;
+import org.apache.dolphinscheduler.common.constants.Constants;
+import org.apache.dolphinscheduler.common.utils.CodeGenerateUtils;
+import org.apache.dolphinscheduler.dao.entity.Cluster;
 import org.apache.dolphinscheduler.dao.entity.K8sNamespace;
 import org.apache.dolphinscheduler.dao.entity.User;
+import org.apache.dolphinscheduler.dao.mapper.ClusterMapper;
 import org.apache.dolphinscheduler.dao.mapper.K8sNamespaceMapper;
-import org.apache.dolphinscheduler.service.k8s.K8sClientService;
+import org.apache.dolphinscheduler.remote.exceptions.RemotingException;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.collections.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -36,13 +41,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
@@ -55,18 +60,23 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
     private static final Logger logger = LoggerFactory.getLogger(K8SNamespaceServiceImpl.class);
 
     private static String resourceYaml = "apiVersion: v1\n"
-        + "kind: ResourceQuota\n"
-        + "metadata:\n"
-        + "  name: ${name}\n"
-        + "  namespace: ${namespace}\n"
-        + "spec:\n"
-        + "  hard:\n"
-        + "    ${limitCpu}\n"
-        + "    ${limitMemory}\n";
+            + "kind: ResourceQuota\n"
+            + "metadata:\n"
+            + "  name: ${name}\n"
+            + "  namespace: ${namespace}\n"
+            + "spec:\n"
+            + "  hard:\n"
+            + "    ${limitCpu}\n"
+            + "    ${limitMemory}\n";
+
     @Autowired
     private K8sNamespaceMapper k8sNamespaceMapper;
+
     @Autowired
     private K8sClientService k8sClientService;
+
+    @Autowired
+    private ClusterMapper clusterMapper;
 
     /**
      * query namespace list paging
@@ -104,13 +114,14 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
      *
      * @param loginUser    login user
      * @param namespace    namespace
-     * @param k8s          k8s not null
+     * @param clusterCode  k8s not null
      * @param limitsCpu    limits cpu, can null means not limit
      * @param limitsMemory limits memory, can null means not limit
      * @return
      */
     @Override
-    public Map<String, Object> createK8sNamespace(User loginUser, String namespace, String k8s, Double limitsCpu, Integer limitsMemory) {
+    public Map<String, Object> createK8sNamespace(User loginUser, String namespace, Long clusterCode, Double limitsCpu,
+                                                  Integer limitsMemory) {
         Map<String, Object> result = new HashMap<>();
         if (isNotAdmin(loginUser, result)) {
             return result;
@@ -121,8 +132,8 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
             return result;
         }
 
-        if (StringUtils.isEmpty(k8s)) {
-            putMsg(result, Status.REQUEST_PARAMS_NOT_VALID_ERROR, Constants.K8S);
+        if (clusterCode == null) {
+            putMsg(result, Status.REQUEST_PARAMS_NOT_VALID_ERROR, Constants.CLUSTER);
             return result;
         }
 
@@ -136,27 +147,45 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
             return result;
         }
 
-        if (checkNamespaceExistInDb(namespace, k8s)) {
-            putMsg(result, Status.K8S_NAMESPACE_EXIST, namespace, k8s);
+        if (checkNamespaceExistInDb(namespace, clusterCode)) {
+            putMsg(result, Status.K8S_NAMESPACE_EXIST, namespace, clusterCode);
+            return result;
+        }
+
+        Cluster cluster = clusterMapper.queryByClusterCode(clusterCode);
+        if (cluster == null) {
+            putMsg(result, Status.CLUSTER_NOT_EXISTS, namespace, clusterCode);
+            return result;
+        }
+
+        long code = 0L;
+        try {
+            code = CodeGenerateUtils.getInstance().genCode();
+            cluster.setCode(code);
+        } catch (CodeGenerateUtils.CodeGenerateException e) {
+            logger.error("Cluster code get error, ", e);
+        }
+        if (code == 0L) {
+            putMsg(result, Status.INTERNAL_SERVER_ERROR_ARGS, "Error generating cluster code");
             return result;
         }
 
         K8sNamespace k8sNamespaceObj = new K8sNamespace();
         Date now = new Date();
 
+        k8sNamespaceObj.setCode(code);
         k8sNamespaceObj.setNamespace(namespace);
-        k8sNamespaceObj.setK8s(k8s);
+        k8sNamespaceObj.setClusterCode(clusterCode);
         k8sNamespaceObj.setUserId(loginUser.getId());
         k8sNamespaceObj.setLimitsCpu(limitsCpu);
         k8sNamespaceObj.setLimitsMemory(limitsMemory);
-        k8sNamespaceObj.setOnlineJobNum(0);
         k8sNamespaceObj.setPodReplicas(0);
         k8sNamespaceObj.setPodRequestCpu(0.0);
         k8sNamespaceObj.setPodRequestMemory(0);
         k8sNamespaceObj.setCreateTime(now);
         k8sNamespaceObj.setUpdateTime(now);
 
-        if (!Constants.K8S_LOCAL_TEST_CLUSTER.equals(k8sNamespaceObj.getK8s())) {
+        if (!Constants.K8S_LOCAL_TEST_CLUSTER_CODE.equals(k8sNamespaceObj.getClusterCode())) {
             try {
                 String yamlStr = genDefaultResourceYaml(k8sNamespaceObj);
                 k8sClientService.upsertNamespaceAndResourceToK8s(k8sNamespaceObj, yamlStr);
@@ -183,7 +212,8 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
      * @return
      */
     @Override
-    public Map<String, Object> updateK8sNamespace(User loginUser, int id, String userName, Double limitsCpu, Integer limitsMemory) {
+    public Map<String, Object> updateK8sNamespace(User loginUser, int id, String userName, Double limitsCpu,
+                                                  Integer limitsMemory) {
         Map<String, Object> result = new HashMap<>();
         if (isNotAdmin(loginUser, result)) {
             return result;
@@ -210,7 +240,7 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
         k8sNamespaceObj.setLimitsMemory(limitsMemory);
         k8sNamespaceObj.setUpdateTime(now);
 
-        if (!Constants.K8S_LOCAL_TEST_CLUSTER.equals(k8sNamespaceObj.getK8s())) {
+        if (!Constants.K8S_LOCAL_TEST_CLUSTER_CODE.equals(k8sNamespaceObj.getClusterCode())) {
             try {
                 String yamlStr = genDefaultResourceYaml(k8sNamespaceObj);
                 k8sClientService.upsertNamespaceAndResourceToK8s(k8sNamespaceObj, yamlStr);
@@ -230,25 +260,25 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
     /**
      * verify namespace and k8s
      *
-     * @param namespace namespace
-     * @param k8s       k8s
+     * @param namespace   namespace
+     * @param clusterCode cluster code
      * @return true if the k8s and namespace not exists, otherwise return false
      */
     @Override
-    public Result<Object> verifyNamespaceK8s(String namespace, String k8s) {
+    public Result<Object> verifyNamespaceK8s(String namespace, Long clusterCode) {
         Result<Object> result = new Result<>();
         if (StringUtils.isEmpty(namespace)) {
             putMsg(result, Status.REQUEST_PARAMS_NOT_VALID_ERROR, Constants.NAMESPACE);
             return result;
         }
 
-        if (StringUtils.isEmpty(k8s)) {
-            putMsg(result, Status.REQUEST_PARAMS_NOT_VALID_ERROR, Constants.K8S);
+        if (clusterCode == null) {
+            putMsg(result, Status.REQUEST_PARAMS_NOT_VALID_ERROR, Constants.CLUSTER);
             return result;
         }
 
-        if (checkNamespaceExistInDb(namespace, k8s)) {
-            putMsg(result, Status.K8S_NAMESPACE_EXIST, namespace, k8s);
+        if (checkNamespaceExistInDb(namespace, clusterCode)) {
+            putMsg(result, Status.K8S_NAMESPACE_EXIST, namespace, clusterCode);
             return result;
         }
 
@@ -275,8 +305,13 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
             putMsg(result, Status.K8S_NAMESPACE_NOT_EXIST, id);
             return result;
         }
-        if (!Constants.K8S_LOCAL_TEST_CLUSTER.equals(k8sNamespaceObj.getK8s())) {
-            k8sClientService.deleteNamespaceToK8s(k8sNamespaceObj.getNamespace(), k8sNamespaceObj.getK8s());
+        if (!Constants.K8S_LOCAL_TEST_CLUSTER_CODE.equals(k8sNamespaceObj.getClusterCode())) {
+            try {
+                k8sClientService.deleteNamespaceToK8s(k8sNamespaceObj.getNamespace(), k8sNamespaceObj.getClusterCode());
+            } catch (RemotingException e) {
+                putMsg(result, Status.K8S_CLIENT_OPS_ERROR, id);
+                return result;
+            }
         }
         k8sNamespaceMapper.deleteById(id);
         putMsg(result, Status.SUCCESS);
@@ -289,8 +324,8 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
      * @param namespace namespace
      * @return true if the k8s and namespace not exists, otherwise return false
      */
-    private boolean checkNamespaceExistInDb(String namespace, String k8s) {
-        return k8sNamespaceMapper.existNamespace(namespace, k8s) == Boolean.TRUE;
+    private boolean checkNamespaceExistInDb(String namespace, Long clusterCode) {
+        return k8sNamespaceMapper.existNamespace(namespace, clusterCode) == Boolean.TRUE;
     }
 
     /**
@@ -300,7 +335,7 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
      * @return yaml file
      */
     private String genDefaultResourceYaml(K8sNamespace k8sNamespace) {
-        //resource use same name with namespace
+        // resource use same name with namespace
         String name = k8sNamespace.getNamespace();
         String namespace = k8sNamespace.getNamespace();
         String cpuStr = null;
@@ -314,7 +349,7 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
         }
 
         String result = resourceYaml.replace("${name}", name)
-            .replace("${namespace}", namespace);
+                .replace("${namespace}", namespace);
         if (cpuStr == null) {
             result = result.replace("${limitCpu}", "");
         } else {
@@ -328,7 +363,6 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
         }
         return result;
     }
-
 
     /**
      * query unauthorized namespace
@@ -387,10 +421,31 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
      */
     @Override
     public List<K8sNamespace> queryNamespaceAvailable(User loginUser) {
+        List<K8sNamespace> k8sNamespaces;
         if (isAdmin(loginUser)) {
-            return k8sNamespaceMapper.selectList(null);
+            k8sNamespaces = k8sNamespaceMapper.selectList(null);
         } else {
-            return k8sNamespaceMapper.queryNamespaceAvailable(loginUser.getId());
+            k8sNamespaces = k8sNamespaceMapper.queryAuthedNamespaceListByUserId(loginUser.getId());
+        }
+        setClusterName(k8sNamespaces);
+        return k8sNamespaces;
+    }
+
+    /**
+     * set cluster_name
+     * @param k8sNamespaces source data
+     */
+    private void setClusterName(List<K8sNamespace> k8sNamespaces) {
+        if (CollectionUtils.isNotEmpty(k8sNamespaces)) {
+            List<Cluster> clusters = clusterMapper.queryAllClusterList();
+            if (CollectionUtils.isNotEmpty(clusters)) {
+                Map<Long, String> codeNameMap = clusters.stream()
+                        .collect(Collectors.toMap(Cluster::getCode, Cluster::getName, (a, b) -> a));
+                for (K8sNamespace k8sNamespace : k8sNamespaces) {
+                    String clusterName = codeNameMap.get(k8sNamespace.getClusterCode());
+                    k8sNamespace.setClusterName(clusterName);
+                }
+            }
         }
     }
 
@@ -401,7 +456,8 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
      * @param authedNamespaceList authed namespace list
      * @return namespace list that authorization
      */
-    private List<K8sNamespace> getUnauthorizedNamespaces(Set<K8sNamespace> namespaceSet, List<K8sNamespace> authedNamespaceList) {
+    private List<K8sNamespace> getUnauthorizedNamespaces(Set<K8sNamespace> namespaceSet,
+                                                         List<K8sNamespace> authedNamespaceList) {
         List<K8sNamespace> resultList = new ArrayList<>();
         for (K8sNamespace k8sNamespace : namespaceSet) {
             boolean existAuth = false;
@@ -419,5 +475,4 @@ public class K8SNamespaceServiceImpl extends BaseServiceImpl implements K8sNames
         }
         return resultList;
     }
-
 }

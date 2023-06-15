@@ -20,7 +20,6 @@ package org.apache.dolphinscheduler.service.process;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
 import org.apache.dolphinscheduler.common.enums.TaskGroupQueueStatus;
 import org.apache.dolphinscheduler.common.graph.DAG;
-import org.apache.dolphinscheduler.common.model.TaskNode;
 import org.apache.dolphinscheduler.common.model.TaskNodeRelation;
 import org.apache.dolphinscheduler.common.utils.CodeGenerateUtils;
 import org.apache.dolphinscheduler.dao.entity.Command;
@@ -50,19 +49,24 @@ import org.apache.dolphinscheduler.dao.entity.TaskInstance;
 import org.apache.dolphinscheduler.dao.entity.Tenant;
 import org.apache.dolphinscheduler.dao.entity.UdfFunc;
 import org.apache.dolphinscheduler.dao.entity.User;
-import org.apache.dolphinscheduler.plugin.task.api.enums.ExecutionStatus;
+import org.apache.dolphinscheduler.plugin.task.api.enums.TaskExecutionStatus;
 import org.apache.dolphinscheduler.plugin.task.api.model.DateInterval;
+import org.apache.dolphinscheduler.service.exceptions.CronParseException;
+import org.apache.dolphinscheduler.service.model.TaskNode;
 import org.apache.dolphinscheduler.spi.enums.ResourceType;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.transaction.annotation.Transactional;
 
 public interface ProcessService {
+
     @Transactional
-    ProcessInstance handleCommand(String host, Command command);
+    ProcessInstance handleCommand(String host,
+                                  Command command) throws CronParseException, CodeGenerateUtils.CodeGenerateException;
 
     void moveToErrorCommand(Command command, String message);
 
@@ -74,7 +78,7 @@ public interface ProcessService {
 
     boolean verifyIsNeedCreateCommand(Command command);
 
-    ProcessInstance findProcessInstanceDetailById(int processId);
+    Optional<ProcessInstance> findProcessInstanceDetailById(int processId);
 
     List<TaskDefinition> getTaskNodeListByDefinition(long defineCode);
 
@@ -104,7 +108,8 @@ public interface ProcessService {
 
     void setSubProcessParam(ProcessInstance subProcessInstance);
 
-    TaskInstance submitTaskWithRetry(ProcessInstance processInstance, TaskInstance taskInstance, int commitRetryTimes, long commitInterval);
+    TaskInstance submitTaskWithRetry(ProcessInstance processInstance, TaskInstance taskInstance, int commitRetryTimes,
+                                     long commitInterval);
 
     @Transactional
     TaskInstance submitTask(ProcessInstance processInstance, TaskInstance taskInstance);
@@ -120,9 +125,7 @@ public interface ProcessService {
 
     TaskInstance submitTaskInstanceToDB(TaskInstance taskInstance, ProcessInstance processInstance);
 
-    ExecutionStatus getSubmitTaskState(TaskInstance taskInstance, ProcessInstance processInstance);
-
-    void saveProcessInstance(ProcessInstance processInstance);
+    TaskExecutionStatus getSubmitTaskState(TaskInstance taskInstance, ProcessInstance processInstance);
 
     int saveCommand(Command command);
 
@@ -140,7 +143,7 @@ public interface ProcessService {
 
     void updateTaskDefinitionResources(TaskDefinition taskDefinition);
 
-    List<Integer> findTaskIdByInstanceState(int instanceId, ExecutionStatus state);
+    List<Integer> findTaskIdByInstanceState(int instanceId, TaskExecutionStatus state);
 
     List<TaskInstance> findValidTaskListByProcessId(Integer processInstanceId);
 
@@ -157,8 +160,6 @@ public interface ProcessService {
     ProcessInstance findSubProcessInstance(Integer parentProcessId, Integer parentTaskId);
 
     ProcessInstance findParentProcessInstance(Integer subProcessId);
-
-    int updateProcessInstance(ProcessInstance processInstance);
 
     void changeOutParam(TaskInstance taskInstance);
 
@@ -180,8 +181,6 @@ public interface ProcessService {
     List<TaskInstance> queryNeedFailoverTaskInstances(String host);
 
     DataSource findDataSourceById(int id);
-
-    int updateProcessInstanceState(Integer processInstanceId, ExecutionStatus executionStatus);
 
     ProcessInstance findProcessInstanceByTaskId(int taskId);
 
@@ -225,7 +224,8 @@ public interface ProcessService {
 
     int saveTaskDefine(User operator, long projectCode, List<TaskDefinitionLog> taskDefinitionLogs, Boolean syncDefine);
 
-    int saveProcessDefine(User operator, ProcessDefinition processDefinition, Boolean syncDefine, Boolean isFromProcessDefine);
+    int saveProcessDefine(User operator, ProcessDefinition processDefinition, Boolean syncDefine,
+                          Boolean isFromProcessDefine);
 
     int saveTaskRelation(User operator, long projectCode, long processDefinitionCode, int processDefinitionVersion,
                          List<ProcessTaskRelationLog> taskRelationList, List<TaskDefinitionLog> taskDefinitionLogs,
@@ -245,7 +245,8 @@ public interface ProcessService {
 
     List<ProcessTaskRelation> findRelationByCode(long processDefinitionCode, int processDefinitionVersion);
 
-    List<TaskNode> transformTask(List<ProcessTaskRelation> taskRelationList, List<TaskDefinitionLog> taskDefinitionLogs);
+    List<TaskNode> transformTask(List<ProcessTaskRelation> taskRelationList,
+                                 List<TaskDefinitionLog> taskDefinitionLogs);
 
     Map<ProcessInstance, TaskInstance> notifyProcessList(int processId);
 
@@ -280,8 +281,11 @@ public interface ProcessService {
     void changeTaskGroupQueueStatus(int taskId, TaskGroupQueueStatus status);
 
     TaskGroupQueue insertIntoTaskGroupQueue(Integer taskId,
-                                            String taskName, Integer groupId,
-                                            Integer processId, Integer priority, TaskGroupQueueStatus status);
+                                            String taskName,
+                                            Integer groupId,
+                                            Integer processId,
+                                            Integer priority,
+                                            TaskGroupQueueStatus status);
 
     int updateTaskGroupQueueStatus(Integer taskId, int status);
 
@@ -293,6 +297,8 @@ public interface ProcessService {
                               org.apache.dolphinscheduler.remote.command.CommandType taskType);
 
     ProcessInstance loadNextProcess4Serial(long code, int state, int id);
+
+    public String findConfigYamlByName(String clusterName);
 
     void forceProcessInstanceSuccessByTaskInstanceId(Integer taskInstanceId);
 }

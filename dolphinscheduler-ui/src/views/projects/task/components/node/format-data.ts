@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { find, omit, cloneDeep } from 'lodash'
+import { omit } from 'lodash'
 import type {
   INodeData,
   ITaskData,
@@ -23,7 +23,8 @@ import type {
   ISqoopTargetParams,
   ISqoopSourceParams,
   ILocalParam,
-  IDependTask
+  IDependTask,
+  RelationType
 } from './types'
 
 export function formatParams(data: INodeData): {
@@ -36,9 +37,8 @@ export function formatParams(data: INodeData): {
     taskParams.processDefinitionCode = data.processDefinitionCode
   }
   if (
-    data.taskType === 'SPARK' ||
-    data.taskType === 'MR' ||
-    data.taskType === 'FLINK'
+    data.taskType &&
+    ['SPARK', 'MR', 'FLINK', 'FLINK_STREAM'].includes(data.taskType)
   ) {
     taskParams.programType = data.programType
     taskParams.mainClass = data.mainClass
@@ -60,7 +60,7 @@ export function formatParams(data: INodeData): {
     taskParams.executorCores = data.executorCores
   }
 
-  if (data.taskType === 'FLINK') {
+  if (data.taskType === 'FLINK' || data.taskType === 'FLINK_STREAM') {
     taskParams.flinkVersion = data.flinkVersion
     taskParams.jobManagerMemory = data.jobManagerMemory
     taskParams.taskManagerMemory = data.taskManagerMemory
@@ -88,6 +88,7 @@ export function formatParams(data: INodeData): {
       taskParams.hadoopCustomParams = data.hadoopCustomParams
       taskParams.sqoopAdvancedParams = data.sqoopAdvancedParams
       taskParams.concurrency = data.concurrency
+      taskParams.splitBy = data.splitBy
       taskParams.modelType = data.modelType
       taskParams.sourceType = data.sourceType
       taskParams.targetType = data.targetType
@@ -199,12 +200,22 @@ export function formatParams(data: INodeData): {
   }
 
   if (data.taskType === 'SEATUNNEL') {
-    if (data.deployMode === 'local') {
-      data.master = 'local'
-      data.masterUrl = ''
-      data.deployMode = 'client'
+    taskParams.startupScript = data.startupScript
+    taskParams.useCustom = data.useCustom
+    taskParams.rawScript = data.rawScript
+    if (data.startupScript?.includes("flink")) {
+      taskParams.runMode = data.runMode
+      taskParams.others = data.others
     }
-    buildRawScript(data)
+    if (data.startupScript?.includes("spark")) {
+      taskParams.deployMode = data.deployMode
+      taskParams.master = data.master
+      taskParams.masterUrl = data.masterUrl
+    }
+    if (data.startupScript === "seatunnel.sh") {
+      taskParams.deployMode = data.deployMode
+      taskParams.others = data.others
+    }
   }
 
   if (data.taskType === 'SWITCH') {
@@ -251,21 +262,9 @@ export function formatParams(data: INodeData): {
     taskParams.xmx = data.xmx
   }
   if (data.taskType === 'DEPENDENT') {
-    const dependTaskList = cloneDeep(data.dependTaskList)?.map(
-      (taskItem: IDependTask) => {
-        if (taskItem.dependItemList?.length) {
-          taskItem.dependItemList.forEach((dependItem) => {
-            delete dependItem.definitionCodeOptions
-            delete dependItem.depTaskCodeOptions
-            delete dependItem.dateOptions
-          })
-        }
-        return taskItem
-      }
-    )
     taskParams.dependence = {
       relation: data.relation,
-      dependTaskList: dependTaskList
+      dependTaskList: data.dependTaskList
     }
   }
   if (data.taskType === 'DATA_QUALITY') {
@@ -310,17 +309,111 @@ export function formatParams(data: INodeData): {
 
   if (data.taskType === 'EMR') {
     taskParams.type = data.type
+    taskParams.programType = data.programType
     taskParams.jobFlowDefineJson = data.jobFlowDefineJson
+    taskParams.stepsDefineJson = data.stepsDefineJson
   }
 
   if (data.taskType === 'ZEPPELIN') {
     taskParams.noteId = data.noteId
     taskParams.paragraphId = data.paragraphId
+    taskParams.restEndpoint = data.restEndpoint
+    taskParams.productionNoteDirectory = data.productionNoteDirectory
+    taskParams.parameters = data.parameters
+  }
+
+  if (data.taskType === 'K8S') {
+    taskParams.namespace = data.namespace
+    taskParams.minCpuCores = data.minCpuCores
+    taskParams.minMemorySpace = data.minMemorySpace
+    taskParams.image = data.image
+  }
+
+  if (data.taskType === 'JUPYTER') {
+    taskParams.condaEnvName = data.condaEnvName
+    taskParams.inputNotePath = data.inputNotePath
+    taskParams.outputNotePath = data.outputNotePath
+    taskParams.parameters = data.parameters
+    taskParams.kernel = data.kernel
+    taskParams.engine = data.engine
+    taskParams.executionTimeout = data.executionTimeout
+    taskParams.startTimeout = data.startTimeout
+    taskParams.others = data.others
+  }
+
+  if (data.taskType === 'MLFLOW') {
+    taskParams.algorithm = data.algorithm
+    taskParams.params = data.params
+    taskParams.searchParams = data.searchParams
+    taskParams.dataPath = data.dataPath
+    taskParams.experimentName = data.experimentName
+    taskParams.modelName = data.modelName
+    taskParams.mlflowTrackingUri = data.mlflowTrackingUri
+    taskParams.mlflowJobType = data.mlflowJobType
+    taskParams.automlTool = data.automlTool
+    taskParams.registerModel = data.registerModel
+    taskParams.mlflowTaskType = data.mlflowTaskType
+    taskParams.deployType = data.deployType
+    taskParams.deployPort = data.deployPort
+    taskParams.deployModelKey = data.deployModelKey
+    taskParams.mlflowProjectRepository = data.mlflowProjectRepository
+    taskParams.mlflowProjectVersion = data.mlflowProjectVersion
+  }
+
+  if (data.taskType === 'DVC') {
+    taskParams.dvcTaskType = data.dvcTaskType
+    taskParams.dvcRepository = data.dvcRepository
+    taskParams.dvcVersion = data.dvcVersion
+    taskParams.dvcDataLocation = data.dvcDataLocation
+    taskParams.dvcMessage = data.dvcMessage
+    taskParams.dvcLoadSaveDataPath = data.dvcLoadSaveDataPath
+    taskParams.dvcStoreUrl = data.dvcStoreUrl
+  }
+
+  if (data.taskType === 'SAGEMAKER') {
+    taskParams.sagemakerRequestJson = data.sagemakerRequestJson
+  }
+  if (data.taskType === 'PYTORCH') {
+    taskParams.script = data.script
+    taskParams.scriptParams = data.scriptParams
+    taskParams.pythonPath = data.pythonPath
+    taskParams.isCreateEnvironment = data.isCreateEnvironment
+    taskParams.pythonCommand = data.pythonCommand
+    taskParams.pythonEnvTool = data.pythonEnvTool
+    taskParams.requirements = data.requirements
+    taskParams.condaPythonVersion = data.condaPythonVersion
+  }
+
+  if (data.taskType === 'DINKY') {
+    taskParams.address = data.address
+    taskParams.taskId = data.taskId
+    taskParams.online = data.online
+  }
+
+  if (data.taskType === 'OPENMLDB') {
+    taskParams.zk = data.zk
+    taskParams.zkPath = data.zkPath
+    taskParams.executeMode = data.executeMode
+    taskParams.sql = data.sql
+  }
+
+  if (data.taskType === 'CHUNJUN') {
+    taskParams.customConfig = data.customConfig ? 1 : 0
+    taskParams.json = data.json
+    taskParams.deployMode = data.deployMode
+    taskParams.others = data.others
   }
 
   if (data.taskType === 'PIGEON') {
     taskParams.targetJobName = data.targetJobName
   }
+
+  if (data.taskType === 'HIVECLI') {
+    taskParams.hiveCliTaskExecutionType = data.hiveCliTaskExecutionType
+    taskParams.hiveSqlScript = data.hiveSqlScript
+    taskParams.hiveCliOptions = data.hiveCliOptions
+  }
+
   let timeoutNotifyStrategy = ''
   if (data.timeoutNotifyStrategy) {
     if (data.timeoutNotifyStrategy.length === 1) {
@@ -363,7 +456,10 @@ export function formatParams(data: INodeData): {
       timeout: data.timeoutFlag ? data.timeout : 0,
       timeoutFlag: data.timeoutFlag ? 'OPEN' : 'CLOSE',
       timeoutNotifyStrategy: data.timeoutFlag ? timeoutNotifyStrategy : '',
-      workerGroup: data.workerGroup
+      workerGroup: data.workerGroup,
+      cpuQuota: data.cpuQuota || -1,
+      memoryMax: data.memoryMax || -1,
+      taskExecuteType: data.taskExecuteType
     }
   } as {
     processDefinitionCode: string
@@ -490,9 +586,11 @@ export function formatModel(data: ITaskData) {
   }
 
   if (data.taskParams?.dependence) {
-    params.dependTaskList = data.taskParams?.dependence.dependTaskList || []
-    params.relation = data.taskParams?.dependence.relation
+    const dependence: { relation?: RelationType, dependTaskList?: IDependTask[] } = JSON.parse(JSON.stringify(data.taskParams.dependence))
+    params.dependTaskList = dependence.dependTaskList || []
+    params.relation = dependence.relation
   }
+
   if (data.taskParams?.ruleInputParameter) {
     params.check_type = data.taskParams.ruleInputParameter.check_type
     params.comparison_execute_sql =
@@ -540,22 +638,6 @@ export function formatModel(data: ITaskData) {
     params.others = data.taskParams.sparkParameters.others
   }
 
-  if (data.taskParams?.jobFlowDefineJson) {
-    params.jobFlowDefineJson = data.taskParams.jobFlowDefineJson
-  }
-
-  if (data.taskParams?.zeppelinNoteId) {
-    params.zeppelinNoteId = data.taskParams.zeppelinNoteId
-  }
-
-  if (data.taskParams?.zeppelinParagraphId) {
-    params.zeppelinParagraphId = data.taskParams.zeppelinParagraphId
-  }
-
-  if (data.taskParams?.processDefinitionCode) {
-    params.processDefinitionCode = data.taskParams.processDefinitionCode
-  }
-
   if (data.taskParams?.conditionResult?.successNode?.length) {
     params.successBranch = data.taskParams.conditionResult.successNode[0]
   }
@@ -571,51 +653,6 @@ export function formatModel(data: ITaskData) {
   if (data.taskParams?.jobType) {
     params.isCustomTask = data.taskParams.jobType === 'CUSTOM'
   }
+
   return params
-}
-
-const buildRawScript = (model: INodeData) => {
-  const baseScript = 'sh ${WATERDROP_HOME}/bin/start-waterdrop.sh'
-  if (!model.resourceList) return
-
-  let master = model.master
-  let masterUrl = model?.masterUrl ? model?.masterUrl : ''
-  let deployMode = model.deployMode
-  const queue = model.queue
-
-  if (model.deployMode === 'local') {
-    master = 'local'
-    masterUrl = ''
-    deployMode = 'client'
-  }
-
-  if (master === 'yarn' || master === 'local') {
-    masterUrl = ''
-  }
-
-  let localParams = ''
-  model?.localParams?.forEach((param: any) => {
-    localParams = localParams + ' --variable ' + param.prop + '=' + param.value
-  })
-
-  let rawScript = ''
-  model.resourceList?.forEach((id: number) => {
-    const item = find(model.resourceFiles, { id: id })
-
-    rawScript =
-      rawScript +
-      baseScript +
-      ' --master ' +
-      master +
-      masterUrl +
-      ' --deploy-mode ' +
-      deployMode +
-      ' --queue ' +
-      queue
-    if (item && item.fullName) {
-      rawScript = rawScript + ' --config ' + item.fullName
-    }
-    rawScript = rawScript + localParams + ' \n'
-  })
-  model.rawScript = rawScript ? rawScript : ''
 }

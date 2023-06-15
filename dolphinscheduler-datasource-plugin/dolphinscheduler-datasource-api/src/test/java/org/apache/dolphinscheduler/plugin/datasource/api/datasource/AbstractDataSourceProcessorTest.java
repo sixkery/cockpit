@@ -43,4 +43,13 @@ public class AbstractDataSourceProcessorTest {
         other.put("arg0", "%");
         doThrow(new IllegalArgumentException()).when(mockDataSourceProcessor).checkOther(other);
     }
+
+    @Test
+    public void shouldNotIncludeMaliciousParams() {
+        AbstractDataSourceProcessor mockDataSourceProcessor = mock(AbstractDataSourceProcessor.class);
+        Map<String, String> other = new HashMap<>();
+        other.put("allowLoadLocalInfile", "whatever");
+        other.put("OutputLocation", "s3://test-data-xini/athena-query");
+        doThrow(new IllegalArgumentException()).when(mockDataSourceProcessor).checkOther(other);
+    }
 }

@@ -22,8 +22,10 @@ import org.apache.dolphinscheduler.common.enums.FailureStrategy;
 import org.apache.dolphinscheduler.common.enums.Priority;
 import org.apache.dolphinscheduler.common.enums.ReleaseState;
 import org.apache.dolphinscheduler.common.enums.WarningType;
+import org.apache.dolphinscheduler.dao.entity.Schedule;
 import org.apache.dolphinscheduler.dao.entity.User;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -83,7 +85,6 @@ public interface SchedulerService {
                                        String workerGroup,
                                        Long environmentCode);
 
-
     /**
      * set schedule online or offline
      *
@@ -91,12 +92,11 @@ public interface SchedulerService {
      * @param projectCode project code
      * @param id scheduler id
      * @param scheduleStatus schedule status
-     * @return publish result code
      */
-    Map<String, Object> setScheduleState(User loginUser,
-                                         long projectCode,
-                                         Integer id,
-                                         ReleaseState scheduleStatus);
+    void setScheduleState(User loginUser,
+                          long projectCode,
+                          Integer id,
+                          ReleaseState scheduleStatus);
 
     /**
      * query schedule
@@ -110,12 +110,14 @@ public interface SchedulerService {
      * @return schedule list page
      */
     Result querySchedule(User loginUser, long projectCode, long processDefineCode, String searchVal,
-                                      Integer pageNo, Integer pageSize);
+                         Integer pageNo, Integer pageSize);
+
+    List<Schedule> queryScheduleByProcessDefinitionCodes(List<Long> processDefinitionCodes);
 
     /**
      * query schedule list
      *
-     * @param loginUser login user
+     * @param loginUser   login user
      * @param projectCode project code
      * @return schedule list
      */

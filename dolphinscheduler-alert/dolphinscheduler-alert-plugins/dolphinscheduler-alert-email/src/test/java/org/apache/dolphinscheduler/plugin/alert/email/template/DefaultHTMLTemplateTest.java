@@ -20,8 +20,8 @@ package org.apache.dolphinscheduler.plugin.alert.email.template;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.dolphinscheduler.alert.api.ShowType;
+import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.plugin.alert.email.EmailConstants;
-import org.apache.dolphinscheduler.spi.utils.JSONUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -46,6 +46,14 @@ public class DefaultHTMLTemplateTest {
         String textTypeMessage = template.getMessageFromTemplate(list2String(), ShowType.TEXT, true);
 
         assertEquals(textTypeMessage, generateMockTextTypeResultByHand());
+
+        String mapjson = "{\"taskInstanceId\":94,\"taskName\":\"000\",\"taskType\":\"DATA_QUALITY\","
+                + "\"processDefinitionId\":0,\"processInstanceId\":58,\"state\":\"RUNNING_EXECUTION\","
+                + "\"startTime\":\"2022-07-17 16:00:32\",\"host\":\"192.168.18.182:1234\","
+                + "\"logPath\":\"/Users/mac/学习/dolphinscheduler/dolphinscheduler/logs/20220717/6222644042400_1-58-94.log\"}";
+        textTypeMessage = template.getMessageFromTemplate(mapjson, ShowType.TEXT, true);
+        String result = textTypeMessage;
+        assertEquals(textTypeMessage, result);
     }
 
     private String list2String() {

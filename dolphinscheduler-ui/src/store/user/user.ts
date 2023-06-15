@@ -23,6 +23,7 @@ export const useUserStore = defineStore({
   id: 'user',
   state: (): UserState => ({
     sessionId: '',
+    securityConfigType: '',
     userInfo: {}
   }),
   persist: true,
@@ -30,16 +31,28 @@ export const useUserStore = defineStore({
     getSessionId(): string {
       return this.sessionId
     },
+    getSecurityConfigType(): string {
+      return this.securityConfigType
+    },
     getUserInfo(): UserInfoRes | {} {
       return this.userInfo
+    },
+    getPgpToken(): boolean {
+      return this.pgpToken
     }
   },
   actions: {
     setSessionId(sessionId: string): void {
       this.sessionId = sessionId
     },
+    setSecurityConfigType(securityConfigType: string): void {
+      this.securityConfigType = securityConfigType
+    },
     setUserInfo(userInfo: UserInfoRes | {}): void {
       this.userInfo = userInfo
-    }
+    },
+    setPgpToken(pgpToken: boolean): void {
+      this.pgpToken = pgpToken
+    },
   }
 })

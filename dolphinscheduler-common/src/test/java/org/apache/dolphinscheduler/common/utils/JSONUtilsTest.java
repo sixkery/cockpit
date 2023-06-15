@@ -17,11 +17,15 @@
 
 package org.apache.dolphinscheduler.common.utils;
 
-import org.apache.dolphinscheduler.common.model.TaskNode;
-import org.apache.dolphinscheduler.plugin.task.api.enums.DataType;
-import org.apache.dolphinscheduler.plugin.task.api.enums.Direct;
-import org.apache.dolphinscheduler.plugin.task.api.model.Property;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.junit.Assert;
+import org.junit.Test;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -30,52 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
-import org.junit.Assert;
-import org.junit.Test;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 public class JSONUtilsTest {
 
-    @Test
-    public void createArrayNodeTest() {
-        Property property = new Property();
-        property.setProp("ds");
-        property.setDirect(Direct.IN);
-        property.setType(DataType.VARCHAR);
-        property.setValue("sssssss");
-        String str = "[{\"prop\":\"ds\",\"direct\":\"IN\",\"type\":\"VARCHAR\",\"value\":\"sssssss\"},{\"prop\":\"ds\",\"direct\":\"IN\",\"type\":\"VARCHAR\",\"value\":\"sssssss\"}]";
-        JsonNode jsonNode = JSONUtils.toJsonNode(property);
-
-        ArrayNode arrayNode = JSONUtils.createArrayNode();
-        ArrayList<JsonNode> objects = new ArrayList<>();
-        objects.add(jsonNode);
-        objects.add(jsonNode);
-
-        ArrayNode jsonNodes = arrayNode.addAll(objects);
-        String s = JSONUtils.toJsonString(jsonNodes);
-        Assert.assertEquals(s, str);
-
-    }
-
-    @Test
-    public void toJsonNodeTest() {
-        Property property = new Property();
-        property.setProp("ds");
-        property.setDirect(Direct.IN);
-        property.setType(DataType.VARCHAR);
-        property.setValue("sssssss");
-        String str = "{\"prop\":\"ds\",\"direct\":\"IN\",\"type\":\"VARCHAR\",\"value\":\"sssssss\"}";
-
-        JsonNode jsonNodes = JSONUtils.toJsonNode(property);
-        String s = JSONUtils.toJsonString(jsonNodes);
-        Assert.assertEquals(s, str);
-
-    }
 
     @Test
     public void createObjectNodeTest() {
@@ -99,18 +59,6 @@ public class JSONUtilsTest {
 
     }
 
-    @Test
-    public void convert2Property() {
-        Property property = new Property();
-        property.setProp("ds");
-        property.setDirect(Direct.IN);
-        property.setType(DataType.VARCHAR);
-        property.setValue("sssssss");
-        String str = "{\"direct\":\"IN\",\"prop\":\"ds\",\"type\":\"VARCHAR\",\"value\":\"sssssss\"}";
-        Property property1 = JSONUtils.parseObject(str, Property.class);
-        Direct direct = property1.getDirect();
-        Assert.assertEquals(Direct.IN, direct);
-    }
 
     @Test
     public void string2MapTest() {
@@ -148,15 +96,6 @@ public class JSONUtilsTest {
         Assert.assertNull(JSONUtils.parseObject("foo", String.class));
     }
 
-    @Test
-    public void testNodeString() {
-        Assert.assertEquals("", JSONUtils.getNodeString("", "key"));
-        Assert.assertEquals("", JSONUtils.getNodeString("abc", "key"));
-        Assert.assertEquals("", JSONUtils.getNodeString("{\"bar\":\"foo\"}", "key"));
-        Assert.assertEquals("foo", JSONUtils.getNodeString("{\"bar\":\"foo\"}", "bar"));
-        Assert.assertEquals("[1,2,3]", JSONUtils.getNodeString("{\"bar\": [1,2,3]}", "bar"));
-        Assert.assertEquals("{\"1\":\"2\",\"2\":3}", JSONUtils.getNodeString("{\"bar\": {\"1\":\"2\",\"2\":3}}", "bar"));
-    }
 
     @Test
     public void testJsonByteArray() {
@@ -176,18 +115,6 @@ public class JSONUtilsTest {
                 JSONUtils.toList("A1B2C3", null));
         Assert.assertEquals(new ArrayList(),
                 JSONUtils.toList("", null));
-    }
-
-    @Test
-    public void testCheckJsonValid() {
-        Assert.assertTrue(JSONUtils.checkJsonValid("3"));
-        Assert.assertFalse(JSONUtils.checkJsonValid(""));
-    }
-
-    @Test
-    public void testFindValue() {
-        Assert.assertNull(JSONUtils.findValue(
-                new ArrayNode(new JsonNodeFactory(true)), null));
     }
 
     @Test
@@ -246,44 +173,25 @@ public class JSONUtilsTest {
     }
 
     @Test
-    public void jsonDataDeserializerTest() {
-        String a = "{\"conditionResult\":\"{\\\"successNode\\\":[\\\"\\\"],\\\"failedNode\\\":[\\\"\\\"]}\","
-                + "\"conditionsTask\":false,\"depList\":[],\"dependence\":\"{}\",\"forbidden\":false,"
-                + "\"id\":\"tasks-86823\",\"maxRetryTimes\":1,\"name\":\"shell test\","
-                + "\"params\":\"{\\\"resourceList\\\":[],\\\"localParams\\\":[],\\\"rawScript\\\":\\\"echo "
-                + "'yyc'\\\"}\",\"preTasks\":\"[]\",\"retryInterval\":1,\"runFlag\":\"NORMAL\","
-                + "\"taskInstancePriority\":\"HIGHEST\",\"taskTimeoutParameter\":{\"enable\":false,\"interval\":0},"
-                + "\"timeout\":\"{}\",\"type\":\"SHELL\",\"workerGroup\":\"default\"}";
-
-        TaskNode taskNode = JSONUtils.parseObject(a, TaskNode.class);
-
-        Assert.assertTrue(true);
-    }
-
-    @Test
-    public void dateToString() {
-        TimeZone timeZone = TimeZone.getTimeZone("UTC");
-        TimeZone.setDefault(timeZone);
-        JSONUtils.setTimeZone(timeZone);
-
+    public void localDateTimeToString() {
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Shanghai"));
         String time = "2022-02-22 13:38:24";
         Date date = DateUtils.stringToDate(time);
-        String json = JSONUtils.toJsonString(date);
+        LocalDateTime localDateTime = LocalDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault());
+        String json = JSONUtils.toJsonString(localDateTime);
         Assert.assertEquals("\"" + time + "\"", json);
-
-        String errorFormatTime = "Tue Feb 22 03:50:00 UTC 2022";
-        Assert.assertNull(DateUtils.stringToDate(errorFormatTime));
     }
 
     @Test
-    public void stringToDate() {
-        TimeZone timeZone = TimeZone.getTimeZone("UTC");
-        TimeZone.setDefault(timeZone);
-        JSONUtils.setTimeZone(timeZone);
-
-        String json = "\"2022-02-22 13:38:24\"";
-        Date date = JSONUtils.parseObject(json, Date.class);
-        Assert.assertEquals(DateUtils.stringToDate("2022-02-22 13:38:24"), date);
+    public void stringToLocalDateTime() {
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Shanghai"));
+        String time = "2022-02-22 13:38:24";
+        Date date = DateUtils.stringToDate(time);
+        LocalDateTime localDateTime = LocalDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault());
+        List<LocalDateTime> timeList = JSONUtils.parseObject("[\"2022-02-22 13:38:24\"]", new TypeReference<List<LocalDateTime>>(){});
+        Assert.assertNotNull(timeList);
+        Assert.assertEquals(1, timeList.size());
+        Assert.assertEquals(localDateTime, timeList.get(0));
     }
 
 }

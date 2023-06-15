@@ -22,7 +22,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.apache.dolphinscheduler.api.enums.Status;
-import org.apache.dolphinscheduler.common.Constants;
+import org.apache.dolphinscheduler.common.constants.Constants;
 
 import java.util.Map;
 
@@ -79,6 +79,9 @@ public class CheckUtilsTest {
         assertFalse(CheckUtils.checkPassword("a"));
         assertFalse(CheckUtils.checkPassword("1234567890abcderfasdf2"));
         assertTrue(CheckUtils.checkPassword("123456"));
+        assertFalse(CheckUtils.checkPasswordLength("1"));
+        assertTrue(CheckUtils.checkPasswordLength("dolphinscheduler123"));
+        assertFalse(CheckUtils.checkPasswordLength("dolphinscheduler123456"));
     }
 
     /**

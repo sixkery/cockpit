@@ -19,6 +19,7 @@ package org.apache.dolphinscheduler.plugin.task.spark;
 
 import static org.apache.dolphinscheduler.plugin.task.api.TaskConstants.RWXR_XR_X;
 
+import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.plugin.task.api.AbstractYarnTask;
 import org.apache.dolphinscheduler.plugin.task.api.TaskExecutionContext;
 import org.apache.dolphinscheduler.plugin.task.api.model.Property;
@@ -27,10 +28,9 @@ import org.apache.dolphinscheduler.plugin.task.api.parameters.AbstractParameters
 import org.apache.dolphinscheduler.plugin.task.api.parser.ParamUtils;
 import org.apache.dolphinscheduler.plugin.task.api.parser.ParameterUtils;
 import org.apache.dolphinscheduler.plugin.task.api.utils.ArgsUtils;
-import org.apache.dolphinscheduler.plugin.task.api.utils.MapUtils;
-import org.apache.dolphinscheduler.plugin.task.api.utils.OSUtils;
-import org.apache.dolphinscheduler.spi.utils.JSONUtils;
-import org.apache.dolphinscheduler.spi.utils.StringUtils;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,7 +41,6 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -99,16 +98,19 @@ public class SparkTask extends AbstractYarnTask {
         List<String> args = new ArrayList<>();
 
         // spark version
-        String sparkCommand = SparkVersion.SPARK2.getCommand();
+        String sparkCommand = SparkCommand.SPARK2SUBMIT.getCommand();
 
         // If the programType is non-SQL, execute bin/spark-submit
-        if (SparkVersion.SPARK1.name().equals(sparkParameters.getSparkVersion())) {
-            sparkCommand = SparkVersion.SPARK1.getCommand();
+        if (SparkCommand.SPARK1SUBMIT.getSparkVersion().name().equals(sparkParameters.getSparkVersion())) {
+            sparkCommand = SparkCommand.SPARK1SUBMIT.getCommand();
         }
 
         // If the programType is SQL, execute bin/spark-sql
         if (sparkParameters.getProgramType() == ProgramType.SQL) {
-            sparkCommand = SparkVersion.SPARKSQL.getCommand();
+            sparkCommand = SparkCommand.SPARK2SQL.getCommand();
+            if (SparkCommand.SPARK1SQL.getSparkVersion().name().equals(sparkParameters.getSparkVersion())) {
+                sparkCommand = SparkCommand.SPARK1SQL.getCommand();
+            }
         }
 
         args.add(sparkCommand);
@@ -117,13 +119,7 @@ public class SparkTask extends AbstractYarnTask {
         args.addAll(populateSparkOptions());
 
         // replace placeholder, and combining local and global parameters
-        Map<String, Property> paramsMap = ParamUtils.convert(taskExecutionContext, getParameters());
-        if (MapUtils.isEmpty(paramsMap)) {
-            paramsMap = new HashMap<>();
-        }
-        if (MapUtils.isNotEmpty(taskExecutionContext.getParamsMap())) {
-            paramsMap.putAll(taskExecutionContext.getParamsMap());
-        }
+        Map<String, Property> paramsMap = taskExecutionContext.getPrepareParamsMap();
 
         String command = ParameterUtils.convertParameterPlaceholders(String.join(" ", args), ParamUtils.convert(paramsMap));
 
@@ -234,7 +230,7 @@ public class SparkTask extends AbstractYarnTask {
         Path path = file.toPath();
 
         if (!Files.exists(path)) {
-            String script = sparkParameters.getRawScript().replaceAll("\\r\\n", "\n");
+            String script = replaceParam(sparkParameters.getRawScript());
             sparkParameters.setRawScript(script);
 
             logger.info("raw script : {}", sparkParameters.getRawScript());
@@ -243,7 +239,7 @@ public class SparkTask extends AbstractYarnTask {
             Set<PosixFilePermission> perms = PosixFilePermissions.fromString(RWXR_XR_X);
             FileAttribute<Set<PosixFilePermission>> attr = PosixFilePermissions.asFileAttribute(perms);
             try {
-                if (OSUtils.isWindows()) {
+                if (SystemUtils.IS_OS_WINDOWS) {
                     Files.createFile(path);
                 } else {
                     if (!file.getParentFile().exists()) {
@@ -258,6 +254,14 @@ public class SparkTask extends AbstractYarnTask {
 
         }
         return scriptFileName;
+    }
+
+    private String replaceParam(String script) {
+        script = script.replaceAll("\\r\\n", "\n");
+        // replace placeholder, and combining local and global parameters
+        Map<String, Property> paramsMap = taskExecutionContext.getPrepareParamsMap();
+        script = ParameterUtils.convertParameterPlaceholders(script, ParamUtils.convert(paramsMap));
+        return script;
     }
 
     @Override

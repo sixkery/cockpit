@@ -17,6 +17,7 @@
 
 package org.apache.dolphinscheduler.plugin.task.sqoop.parameter;
 
+import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.plugin.task.api.enums.ResourceType;
 import org.apache.dolphinscheduler.plugin.task.api.model.Property;
 import org.apache.dolphinscheduler.plugin.task.api.parameters.AbstractParameters;
@@ -26,8 +27,8 @@ import org.apache.dolphinscheduler.plugin.task.sqoop.SqoopJobType;
 import org.apache.dolphinscheduler.plugin.task.sqoop.SqoopTaskExecutionContext;
 import org.apache.dolphinscheduler.plugin.task.sqoop.parameter.sources.SourceMysqlParameter;
 import org.apache.dolphinscheduler.plugin.task.sqoop.parameter.targets.TargetMysqlParameter;
-import org.apache.dolphinscheduler.spi.utils.JSONUtils;
-import org.apache.dolphinscheduler.spi.utils.StringUtils;
+
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Objects;
@@ -35,7 +36,7 @@ import java.util.Objects;
 /**
  * sqoop parameters
  */
-public class SqoopParameters  extends AbstractParameters {
+public class SqoopParameters extends AbstractParameters {
 
     /**
      * sqoop job type:
@@ -62,6 +63,10 @@ public class SqoopParameters  extends AbstractParameters {
      * concurrency
      */
     private int concurrency;
+    /**
+     * split by
+     */
+    private String splitBy;
     /**
      * source type
      */
@@ -103,6 +108,14 @@ public class SqoopParameters  extends AbstractParameters {
 
     public void setConcurrency(int concurrency) {
         this.concurrency = concurrency;
+    }
+
+    public String getSplitBy() {
+        return splitBy;
+    }
+
+    public void setSplitBy(String splitBy) {
+        this.splitBy = splitBy;
     }
 
     public String getSourceType() {
@@ -188,16 +201,16 @@ public class SqoopParameters  extends AbstractParameters {
 
         if (SqoopJobType.TEMPLATE.getDescp().equals(jobType)) {
             sqoopParamsCheck = StringUtils.isEmpty(customShell)
-                    && StringUtils.isNotEmpty(modelType)
-                    && StringUtils.isNotEmpty(jobName)
-                    && concurrency != 0
-                    && StringUtils.isNotEmpty(sourceType)
-                    && StringUtils.isNotEmpty(targetType)
-                    && StringUtils.isNotEmpty(sourceParams)
-                    && StringUtils.isNotEmpty(targetParams);
+                && StringUtils.isNotEmpty(modelType)
+                && StringUtils.isNotEmpty(jobName)
+                && concurrency != 0
+                && StringUtils.isNotEmpty(sourceType)
+                && StringUtils.isNotEmpty(targetType)
+                && StringUtils.isNotEmpty(sourceParams)
+                && StringUtils.isNotEmpty(targetParams);
         } else if (SqoopJobType.CUSTOM.getDescp().equals(jobType)) {
             sqoopParamsCheck = StringUtils.isNotEmpty(customShell)
-                    && StringUtils.isEmpty(jobName);
+                && StringUtils.isEmpty(jobName);
         }
 
         return sqoopParamsCheck;

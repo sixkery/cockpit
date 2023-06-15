@@ -20,9 +20,8 @@ package org.apache.dolphinscheduler.tools.datasource.dao;
 import java.sql.SQLException;
 import java.util.Objects;
 import org.apache.dolphinscheduler.common.utils.ConnectionUtils;
-import org.apache.dolphinscheduler.spi.utils.StringUtils;
 
-import org.apache.directory.api.util.Strings;
+import org.apache.commons.lang3.StringUtils;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -35,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 
 /**
  * resource dao
@@ -99,7 +99,7 @@ public class ResourceDao {
                     String[] splits = fullName.split("/");
                     for (int i = 1; i < splits.length; i++) {
                         String parentFullName = Joiner.on("/").join(Arrays.copyOfRange(splits,0, splits.length - i));
-                        if (Strings.isNotEmpty(parentFullName)) {
+                        if (!Strings.isNullOrEmpty(parentFullName)) {
                             long size = resourceSizeMap.getOrDefault(parentFullName, 0L);
                             resourceSizeMap.put(parentFullName, size + fileSize);
                         }

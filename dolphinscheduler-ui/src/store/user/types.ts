@@ -19,7 +19,9 @@ import type { UserInfoRes } from '@/service/modules/users/types'
 
 interface UserState {
   sessionId: string
+  securityConfigType: string
   userInfo: UserInfoRes | {}
+  pgpToken: boolean
 }
 
 export { UserState }

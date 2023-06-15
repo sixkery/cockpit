@@ -55,7 +55,7 @@ apiServers=${apiServers:-"172.2.0.76"}
 
 # The directory to install DolphinScheduler for all machine we config above. It will automatically be created by `install.sh` script if not exists.
 # Do not set this configuration same as the current path (pwd). Do not add quotes to it if you using related path.
-installPath=${installPath:-"/opt/module/dolphinscheduler-3.0.1"}
+installPath=${installPath:-"/opt/module/dolphinscheduler-3.1.8"}
 
 # The user to deploy DolphinScheduler for all machine we config above. For now user must create by yourself before running `install.sh`
 # script. The user needs to have sudo privileges and permissions to operate hdfs. If hdfs is enabled than the root directory needs

@@ -17,12 +17,17 @@
 
 package org.apache.dolphinscheduler.api.service.impl;
 
+import static org.apache.dolphinscheduler.api.constants.ApiFuncIdentificationConstant.YARN_QUEUE_CREATE;
+import static org.apache.dolphinscheduler.api.constants.ApiFuncIdentificationConstant.YARN_QUEUE_UPDATE;
+
 import org.apache.dolphinscheduler.api.enums.Status;
 import org.apache.dolphinscheduler.api.exceptions.ServiceException;
 import org.apache.dolphinscheduler.api.service.QueueService;
 import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.api.utils.Result;
-import org.apache.dolphinscheduler.common.Constants;
+import org.apache.dolphinscheduler.common.constants.Constants;
+import org.apache.dolphinscheduler.common.enums.AuthorizationType;
+import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.dao.entity.Queue;
 import org.apache.dolphinscheduler.dao.entity.User;
 import org.apache.dolphinscheduler.dao.mapper.QueueMapper;
@@ -30,10 +35,14 @@ import org.apache.dolphinscheduler.dao.mapper.UserMapper;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,16 +116,16 @@ public class QueueServiceImpl extends BaseServiceImpl implements QueueService {
      * @return queue list
      */
     @Override
-    public Map<String, Object> queryList(User loginUser) {
-        Map<String, Object> result = new HashMap<>();
-        if (isNotAdmin(loginUser, result)) {
-            return result;
+    public Result queryList(User loginUser) {
+        Result result = new Result();
+        Set<Integer> ids = resourcePermissionCheckService.userOwnedResourceIdsAcquisition(AuthorizationType.QUEUE, loginUser.getId(), logger);
+        if (loginUser.getUserType().equals(UserType.GENERAL_USER)) {
+            ids = ids.isEmpty() ? new HashSet<>() : ids;
+            ids.add(Constants.DEFAULT_QUEUE_ID);
         }
-
-        List<Queue> queueList = queueMapper.selectList(null);
-        result.put(Constants.DATA_LIST, queueList);
+        List<Queue> queueList = queueMapper.selectBatchIds(ids);
+        result.setData(queueList);
         putMsg(result, Status.SUCCESS);
-
         return result;
     }
 
@@ -132,17 +141,16 @@ public class QueueServiceImpl extends BaseServiceImpl implements QueueService {
     @Override
     public Result queryList(User loginUser, String searchVal, Integer pageNo, Integer pageSize) {
         Result result = new Result();
-        if (!isAdmin(loginUser)) {
-            putMsg(result, Status.USER_NO_OPERATION_PERM);
+        PageInfo<Queue> pageInfo = new PageInfo<>(pageNo, pageSize);
+        Set<Integer> ids = resourcePermissionCheckService.userOwnedResourceIdsAcquisition(AuthorizationType.QUEUE, loginUser.getId(), logger);
+        if (ids.isEmpty()) {
+            result.setData(pageInfo);
+            putMsg(result, Status.SUCCESS);
             return result;
         }
-
         Page<Queue> page = new Page<>(pageNo, pageSize);
-
-        IPage<Queue> queueList = queueMapper.queryQueuePaging(page, searchVal);
-
+        IPage<Queue> queueList = queueMapper.queryQueuePaging(page, new ArrayList<>(ids), searchVal);
         Integer count = (int) queueList.getTotal();
-        PageInfo<Queue> pageInfo = new PageInfo<>(pageNo, pageSize);
         pageInfo.setTotal(count);
         pageInfo.setTotalList(queueList.getRecords());
         result.setData(pageInfo);
@@ -161,18 +169,19 @@ public class QueueServiceImpl extends BaseServiceImpl implements QueueService {
      */
     @Override
     @Transactional
-    public Map<String, Object> createQueue(User loginUser, String queue, String queueName) {
-        Map<String, Object> result = new HashMap<>();
-        if (isNotAdmin(loginUser, result)) {
-            return result;
+    public Result createQueue(User loginUser, String queue, String queueName) {
+        Result result = new Result();
+        if (!canOperatorPermissions(loginUser,null, AuthorizationType.QUEUE,YARN_QUEUE_CREATE)) {
+            throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
 
         Queue queueObj = new Queue(queueName, queue);
         createQueueValid(queueObj);
         queueMapper.insert(queueObj);
 
-        result.put(Constants.DATA_LIST, queueObj);
+        result.setData(queueObj);
         putMsg(result, Status.SUCCESS);
+        permissionPostHandle(AuthorizationType.QUEUE, loginUser.getId(), Collections.singletonList(queueObj.getId()), logger);
         return result;
     }
 
@@ -186,10 +195,10 @@ public class QueueServiceImpl extends BaseServiceImpl implements QueueService {
      * @return update result code
      */
     @Override
-    public Map<String, Object> updateQueue(User loginUser, int id, String queue, String queueName) {
-        Map<String, Object> result = new HashMap<>();
-        if (isNotAdmin(loginUser, result)) {
-            return result;
+    public Result updateQueue(User loginUser, int id, String queue, String queueName) {
+        Result result = new Result();
+        if (!canOperatorPermissions(loginUser,new Object[]{id}, AuthorizationType.QUEUE,YARN_QUEUE_UPDATE)) {
+            throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
 
         Queue updateQueue = new Queue(id, queueName, queue);
@@ -204,7 +213,7 @@ public class QueueServiceImpl extends BaseServiceImpl implements QueueService {
         }
 
         queueMapper.updateById(updateQueue);
-
+        result.setData(updateQueue);
         putMsg(result, Status.SUCCESS);
         return result;
     }
@@ -222,7 +231,7 @@ public class QueueServiceImpl extends BaseServiceImpl implements QueueService {
 
         Queue queueValidator = new Queue(queueName, queue);
         createQueueValid(queueValidator);
-
+        result.setData(queueValidator);
         putMsg(result, Status.SUCCESS);
         return result;
     }

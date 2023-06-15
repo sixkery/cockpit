@@ -70,7 +70,7 @@ Go to the ZooKeeper installation directory, copy configure file `zoo_sample.cfg`
 ## Modify Configuration
 
 After completing the preparation of the basic environment, you need to modify the configuration file according to the
-environment you used. The configuration files are both in directory `bin/env` and named `install_env.sh` and `dolphinscheduler_env.sh`.
+environment you used. Change the environment configurations via `export <ENV_NAME>=<VALUE>`. The configuration files are located in directory `bin/env` as `install_env.sh` and `dolphinscheduler_env.sh`.
 
 ### Modify `install_env.sh`
 
@@ -83,6 +83,7 @@ each machine. You could find this file in the path `bin/env/install_env.sh` and 
 # ---------------------------------------------------------
 # Due to the master, worker, and API server being deployed on a single node, the IP of the server is the machine IP or localhost
 ips="localhost"
+sshPort="22"
 masters="localhost"
 workers="localhost:default"
 alertServer="localhost"
@@ -153,7 +154,7 @@ bash ./bin/install.sh
 ```
 
 > **_Note:_** For the first time deployment, there maybe occur five times of `sh: bin/dolphinscheduler-daemon.sh: No such file or directory` in the terminal,
- this is non-important information that you can ignore.
+> this is non-important information that you can ignore.
 
 ## Login DolphinScheduler
 
@@ -189,11 +190,12 @@ bash ./bin/dolphinscheduler-daemon.sh stop alert-server
 > for micro-services need. It means that you could start all servers by command `<service>/bin/start.sh` with different
 > environment variable from `<service>/conf/dolphinscheduler_env.sh`. But it will use file `bin/env/dolphinscheduler_env.sh` overwrite
 > `<service>/conf/dolphinscheduler_env.sh` if you start server with command `/bin/dolphinscheduler-daemon.sh start <service>`.
-
+>
 > **_Note2:_**: Please refer to the section of "System Architecture Design" for service usage. Python gateway service is
 > started along with the api-server, and if you do not want to start Python gateway service please disabled it by changing
-> the yaml config `python-gateway.enabled : false` in api-server's configuration path `api-server/conf/application.yaml` 
+> the yaml config `python-gateway.enabled : false` in api-server's configuration path `api-server/conf/application.yaml`
 
 [jdk]: https://www.oracle.com/technetwork/java/javase/downloads/index.html
 [zookeeper]: https://zookeeper.apache.org/releases.html
 [issue]: https://github.com/apache/dolphinscheduler/issues/6597
+

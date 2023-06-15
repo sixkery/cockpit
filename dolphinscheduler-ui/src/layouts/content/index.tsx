@@ -15,23 +15,24 @@
  * limitations under the License.
  */
 
-import {defineComponent, onMounted, watch, toRefs, ref} from 'vue'
-import {NLayout, NLayoutContent, NLayoutHeader, useMessage} from 'naive-ui'
+import { defineComponent, onMounted, watch, toRefs, ref } from 'vue'
+import { NLayout, NLayoutContent, NLayoutHeader, useMessage } from 'naive-ui'
 import NavBar from './components/navbar'
 import SideBar from './components/sidebar'
-import {useDataList} from './use-dataList'
-import {useLocalesStore} from '@/store/locales/locales'
-import {useRouteStore} from '@/store/route/route'
-import {useI18n} from 'vue-i18n'
-import {useRoute} from 'vue-router'
+import { useDataList } from './use-dataList'
+import { useLocalesStore } from '@/store/locales/locales'
+import { useRouteStore } from '@/store/route/route'
+import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
+import { useUserStore } from "@/store/user/user";
 
 const Content = defineComponent({
   name: 'DSContent',
-   setup() {
+  setup() {
     window.$message = useMessage()
 
     const route = useRoute()
-    const {locale} = useI18n()
+    const { locale } = useI18n()
     const localesStore = useLocalesStore()
     const routeStore = useRouteStore()
     const {
@@ -67,7 +68,7 @@ const Content = defineComponent({
 
     watch(
       () => route.path,
-      async () => {
+      () => {
         if (route.path !== '/login') {
           routeStore.setLastRoute(route.path)
 
@@ -85,13 +86,13 @@ const Content = defineComponent({
           ) as string
           sideKeyRef.value = currentSide.includes(':projectCode')
             ? currentSide.replace(
-              ':projectCode',
-              route.params.projectCode as string
-            )
+                ':projectCode',
+                route.params.projectCode as string
+              )
             : currentSide
         }
-        },
-      {immediate: true}
+      },
+      { immediate: true }
     )
 
     return {
@@ -101,8 +102,10 @@ const Content = defineComponent({
     }
   },
   render() {
+    const userStore = useUserStore()
     return (
       <NLayout style='height: 100%'>
+        <div v-show={!userStore.pgpToken}>
         <NLayoutHeader style='height: 65px'>
           <NavBar
             class='tab-horizontal'
@@ -112,6 +115,7 @@ const Content = defineComponent({
             userDropdownOptions={this.userDropdownOptions}
           />
         </NLayoutHeader>
+        </div>
         <NLayout has-sider position='absolute' style='top: 65px'>
           {this.isShowSide && (
             <SideBar
@@ -124,7 +128,7 @@ const Content = defineComponent({
             style='padding: 16px 22px'
             contentStyle={'height: 100%'}
           >
-            <router-view key={this.$route.fullPath}/>
+            <router-view key={this.$route.fullPath} />
           </NLayoutContent>
         </NLayout>
       </NLayout>

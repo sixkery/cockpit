@@ -17,10 +17,8 @@
 
 package org.apache.dolphinscheduler.api.service.impl;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import static org.apache.dolphinscheduler.api.constants.ApiFuncIdentificationConstant.USER_MANAGER;
+
 import org.apache.dolphinscheduler.api.dto.resources.ResourceComponent;
 import org.apache.dolphinscheduler.api.enums.Status;
 import org.apache.dolphinscheduler.api.exceptions.ServiceException;
@@ -28,10 +26,10 @@ import org.apache.dolphinscheduler.api.service.UsersService;
 import org.apache.dolphinscheduler.api.utils.CheckUtils;
 import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.api.utils.Result;
-import org.apache.dolphinscheduler.common.Constants;
+import org.apache.dolphinscheduler.common.constants.Constants;
+import org.apache.dolphinscheduler.common.enums.AuthorizationType;
 import org.apache.dolphinscheduler.common.enums.Flag;
 import org.apache.dolphinscheduler.common.enums.UserType;
-import org.apache.dolphinscheduler.common.storage.StorageOperate;
 import org.apache.dolphinscheduler.common.utils.EncryptionUtils;
 import org.apache.dolphinscheduler.common.utils.PropertyUtils;
 import org.apache.dolphinscheduler.dao.entity.AlertGroup;
@@ -57,24 +55,32 @@ import org.apache.dolphinscheduler.dao.mapper.TenantMapper;
 import org.apache.dolphinscheduler.dao.mapper.UDFUserMapper;
 import org.apache.dolphinscheduler.dao.mapper.UserMapper;
 import org.apache.dolphinscheduler.dao.utils.ResourceProcessDefinitionUtils;
+import org.apache.dolphinscheduler.service.storage.StorageOperate;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import java.io.IOException;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TimeZone;
-import java.util.Arrays;
-import java.util.stream.Collectors;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 /**
  * users service impl
@@ -148,15 +154,20 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
                                           int state) throws Exception {
         Map<String, Object> result = new HashMap<>();
 
-        //check all user params
+        // check all user params
         String msg = this.checkUserParams(userName, userPassword, email, phone);
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED, msg);
+            return result;
+        }
+
+        if (!isAdmin(loginUser)) {
+            putMsg(result, Status.USER_NO_OPERATION_PERM);
+            return result;
+        }
 
         if (!StringUtils.isEmpty(msg)) {
             putMsg(result, Status.REQUEST_PARAMS_NOT_VALID_ERROR, msg);
-            return result;
-        }
-        if (!isAdmin(loginUser)) {
-            putMsg(result, Status.USER_NO_OPERATION_PERM);
             return result;
         }
 
@@ -171,7 +182,6 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         // resource upload startup
         if (PropertyUtils.getResUploadStartupState()) {
             storageOperate.createTenantDirIfNotExists(tenant.getTenantCode());
-//
         }
 
         result.put(Constants.DATA_LIST, user);
@@ -297,7 +307,7 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
      */
     @Override
     public int getUserIdByName(String name) {
-        //executor name query
+        // executor name query
         int executorId = 0;
         if (StringUtils.isNotEmpty(name)) {
             User executor = queryUser(name);
@@ -323,6 +333,10 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     @Override
     public Result<Object> queryUserList(User loginUser, String searchVal, Integer pageNo, Integer pageSize) {
         Result<Object> result = new Result<>();
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
         if (!isAdmin(loginUser)) {
             putMsg(result, Status.USER_NO_OPERATION_PERM);
             return result;
@@ -369,6 +383,10 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         Map<String, Object> result = new HashMap<>();
         result.put(Constants.STATUS, false);
 
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
         if (check(result, !canOperator(loginUser, userId), Status.USER_NO_OPERATION_PERM)) {
             return result;
         }
@@ -393,8 +411,8 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         }
 
         if (StringUtils.isNotEmpty(userPassword)) {
-            if (!CheckUtils.checkPassword(userPassword)) {
-                putMsg(result, Status.REQUEST_PARAMS_NOT_VALID_ERROR, userPassword);
+            if (!CheckUtils.checkPasswordLength(userPassword)) {
+                putMsg(result, Status.USER_PASSWORD_LENGTH_ERROR);
                 return result;
             }
             user.setUserPassword(EncryptionUtils.getMd5(userPassword));
@@ -413,7 +431,7 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
             return result;
         }
 
-        if (state == 0 && user.getState() != state && loginUser.getId() == user.getId()) {
+        if (state == 0 && user.getState() != state && Objects.equals(loginUser.getId(), user.getId())) {
             putMsg(result, Status.NOT_ALLOW_TO_DISABLE_OWN_ACCOUNT);
             return result;
         }
@@ -431,62 +449,6 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         user.setState(state);
         Date now = new Date();
         user.setUpdateTime(now);
-
-        //if user switches the tenant, the user's resources need to be copied to the new tenant
-//        if (user.getTenantId() != tenantId) {
-//            Tenant oldTenant = tenantMapper.queryById(user.getTenantId());
-//            //query tenant
-//            Tenant newTenant = tenantMapper.queryById(tenantId);
-//            // if hdfs startup
-//            if (null != newTenant && PropertyUtils.getResUploadStartupState() && oldTenant != null) {
-//                String newTenantCode = newTenant.getTenantCode();
-//                String oldResourcePath = storageOperate.getResDir(oldTenant.getTenantCode());
-//                String oldUdfsPath = storageOperate.getUdfDir(oldTenant.getTenantCode());
-//
-//                try {// if old tenant dir exists
-//                    if (storageOperate.exists(oldTenant.getTenantCode(), oldResourcePath)) {
-//                        String newResourcePath = storageOperate.getResDir(newTenantCode);
-//                        String newUdfsPath = storageOperate.getUdfDir(newTenantCode);
-//
-//                        //file resources list
-//                        List<Resource> fileResourcesList = resourceMapper.queryResourceList(
-//                                null, userId, ResourceType.FILE.ordinal());
-//                        if (CollectionUtils.isNotEmpty(fileResourcesList)) {
-//                            ResourceTreeVisitor resourceTreeVisitor = new ResourceTreeVisitor(fileResourcesList);
-//                            ResourceComponent resourceComponent = resourceTreeVisitor.visit();
-//                            copyResourceFiles(oldTenant.getTenantCode(), newTenantCode, resourceComponent, oldResourcePath, newResourcePath);
-//                        }
-//
-//                        //udf resources
-//                        List<Resource> udfResourceList = resourceMapper.queryResourceList(
-//                                null, userId, ResourceType.UDF.ordinal());
-//                        if (CollectionUtils.isNotEmpty(udfResourceList)) {
-//                            ResourceTreeVisitor resourceTreeVisitor = new ResourceTreeVisitor(udfResourceList);
-//                            ResourceComponent resourceComponent = resourceTreeVisitor.visit();
-//                            copyResourceFiles(oldTenant.getTenantCode(), newTenantCode, resourceComponent, oldUdfsPath, newUdfsPath);
-//                        }
-//
-//                    } else {
-//                        // if old tenant dir not exists , create
-//                        storageOperate.createTenantDirIfNotExists(oldTenant.getTenantCode());
-//
-//                        if (!storageOperate.exists(newTenant.getTenantCode(), storageOperate.getDir(null,newTenant.getTenantCode()))) {
-//                            storageOperate.createTenantDirIfNotExists(newTenant.getTenantCode());
-//                        }
-//                    }
-//                } catch (Exception e) {
-//                    logger.error("create tenant {} failed ,the reason is {}", oldTenant, e.getMessage());
-//                }
-//
-//
-//            try {
-//                storageOperate.createTenantDirIfNotExists(newTenant.getTenantCode());
-//            } catch (Exception e) {
-//                logger.error("create tenant {} failed ,the reason is {}", newTenant, e.getMessage());
-//            }
-//            }
-//            user.setTenantId(tenantId);
-//        }
         user.setTenantId(tenantId);
         // updateProcessInstance user
         userMapper.updateById(user);
@@ -506,12 +468,16 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     @Transactional
     public Map<String, Object> deleteUserById(User loginUser, int id) throws IOException {
         Map<String, Object> result = new HashMap<>();
-        //only admin can operate
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
+        // only admin can operate
         if (!isAdmin(loginUser)) {
             putMsg(result, Status.USER_NO_OPERATION_PERM, id);
             return result;
         }
-        //check exist
+        // check exist
         User tempUser = userMapper.selectById(id);
         if (tempUser == null) {
             putMsg(result, Status.USER_NOT_EXIST, id);
@@ -526,7 +492,6 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         }
         // delete user
         userMapper.queryTenantCodeByUserId(id);
-
 
         accessTokenMapper.deleteAccessTokenByUserId(id);
 
@@ -551,7 +516,11 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         Map<String, Object> result = new HashMap<>();
         result.put(Constants.STATUS, false);
 
-        //check exist
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
+        // check exist
         User tempUser = userMapper.selectById(userId);
         if (tempUser == null) {
             putMsg(result, Status.USER_NOT_EXIST, userId);
@@ -590,6 +559,11 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     public Map<String, Object> grantProjectByCode(final User loginUser, final int userId, final long projectCode) {
         Map<String, Object> result = new HashMap<>();
         result.put(Constants.STATUS, false);
+
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
 
         // 1. check if user is existed
         User tempUser = this.userMapper.selectById(userId);
@@ -641,6 +615,10 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         Map<String, Object> result = new HashMap<>();
         result.put(Constants.STATUS, false);
 
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
         // 1. only admin can operate
         if (this.check(result, !this.isAdmin(loginUser), Status.USER_NO_OPERATION_PERM)) {
             return result;
@@ -679,6 +657,10 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     public Map<String, Object> grantResources(User loginUser, int userId, String resourceIds) {
         Map<String, Object> result = new HashMap<>();
 
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
         User user = userMapper.selectById(userId);
         if (user == null) {
             putMsg(result, Status.USER_NOT_EXIST, userId);
@@ -698,27 +680,31 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
             }
         }
 
-        //get the authorized resource id list by user id
-        List<Integer> resIds = resourceUserMapper.queryResourcesIdListByUserIdAndPerm(userId, Constants.AUTHORIZE_WRITABLE_PERM);
-        List<Resource> oldAuthorizedRes = CollectionUtils.isEmpty(resIds) ? new ArrayList<>() : resourceMapper.queryResourceListById(resIds);
-        //if resource type is UDF,need check whether it is bound by UDF function
+        // get the authorized resource id list by user id
+        List<Integer> resIds =
+                resourceUserMapper.queryResourcesIdListByUserIdAndPerm(userId, Constants.AUTHORIZE_WRITABLE_PERM);
+        List<Resource> oldAuthorizedRes =
+                CollectionUtils.isEmpty(resIds) ? new ArrayList<>() : resourceMapper.queryResourceListById(resIds);
+        // if resource type is UDF,need check whether it is bound by UDF function
         Set<Integer> oldAuthorizedResIds = oldAuthorizedRes.stream().map(Resource::getId).collect(Collectors.toSet());
 
-        //get the unauthorized resource id list
+        // get the unauthorized resource id list
         oldAuthorizedResIds.removeAll(needAuthorizeResIds);
 
         if (CollectionUtils.isNotEmpty(oldAuthorizedResIds)) {
 
             // get all resource id of process definitions those is released
             List<Map<String, Object>> list = processDefinitionMapper.listResourcesByUser(userId);
-            Map<Integer, Set<Long>> resourceProcessMap = ResourceProcessDefinitionUtils.getResourceProcessDefinitionMap(list);
+            Map<Integer, Set<Long>> resourceProcessMap =
+                    ResourceProcessDefinitionUtils.getResourceProcessDefinitionMap(list);
             Set<Integer> resourceIdSet = resourceProcessMap.keySet();
 
             resourceIdSet.retainAll(oldAuthorizedResIds);
             if (CollectionUtils.isNotEmpty(resourceIdSet)) {
                 logger.error("can't be deleted,because it is used of process definition");
                 for (Integer resId : resourceIdSet) {
-                    logger.error("resource id:{} is used of process definition {}", resId, resourceProcessMap.get(resId));
+                    logger.error("resource id:{} is used of process definition {}", resId,
+                            resourceProcessMap.get(resId));
                 }
                 putMsg(result, Status.RESOURCE_IS_USED);
                 return result;
@@ -773,6 +759,10 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     public Map<String, Object> grantUDFFunction(User loginUser, int userId, String udfIds) {
         Map<String, Object> result = new HashMap<>();
 
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
         User user = userMapper.selectById(userId);
         if (user == null) {
             putMsg(result, Status.USER_NOT_EXIST, userId);
@@ -803,7 +793,6 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         return result;
     }
 
-
     /**
      * grant namespace
      *
@@ -817,13 +806,16 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     public Map<String, Object> grantNamespaces(User loginUser, int userId, String namespaceIds) {
         Map<String, Object> result = new HashMap<>();
         result.put(Constants.STATUS, false);
-
-        //only admin can operate
-        if (check(result, !isAdmin(loginUser), Status.USER_NO_OPERATION_PERM)) {
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
+        // only admin can operate
+        if (this.check(result, !this.isAdmin(loginUser), Status.USER_NO_OPERATION_PERM)) {
             return result;
         }
 
-        //check exist
+        // check exist
         User tempUser = userMapper.selectById(userId);
         if (tempUser == null) {
             putMsg(result, Status.USER_NOT_EXIST, userId);
@@ -850,7 +842,6 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         return result;
     }
 
-
     /**
      * grant datasource
      *
@@ -865,6 +856,10 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         Map<String, Object> result = new HashMap<>();
         result.put(Constants.STATUS, false);
 
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
         User user = userMapper.selectById(userId);
         if (user == null) {
             putMsg(result, Status.USER_NOT_EXIST, userId);
@@ -907,6 +902,10 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
 
         Map<String, Object> result = new HashMap<>();
 
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
         User user = null;
         if (loginUser.getUserType() == UserType.ADMIN_USER) {
             user = loginUser;
@@ -946,7 +945,11 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     @Override
     public Map<String, Object> queryAllGeneralUsers(User loginUser) {
         Map<String, Object> result = new HashMap<>();
-        //only admin can operate
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
+        // only admin can operate
         if (check(result, !isAdmin(loginUser), Status.USER_NO_OPERATION_PERM)) {
             return result;
         }
@@ -967,12 +970,12 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     @Override
     public Map<String, Object> queryUserList(User loginUser) {
         Map<String, Object> result = new HashMap<>();
-        //only admin can operate
-        if (check(result, !isAdmin(loginUser), Status.USER_NO_OPERATION_PERM)) {
+        // only admin can operate
+        if (!canOperatorPermissions(loginUser, null, AuthorizationType.ACCESS_TOKEN, USER_MANAGER)) {
+            putMsg(result, Status.USER_NO_OPERATION_PERM);
             return result;
         }
-
-        List<User> userList = userMapper.selectList(null);
+        List<User> userList = userMapper.queryEnabledUsers();
         result.put(Constants.DATA_LIST, userList);
         putMsg(result, Status.SUCCESS);
 
@@ -1010,7 +1013,11 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     public Map<String, Object> unauthorizedUser(User loginUser, Integer alertgroupId) {
 
         Map<String, Object> result = new HashMap<>();
-        //only admin can operate
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
+        // only admin can operate
         if (check(result, !isAdmin(loginUser), Status.USER_NO_OPERATION_PERM)) {
             return result;
         }
@@ -1046,7 +1053,11 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     @Override
     public Map<String, Object> authorizedUser(User loginUser, Integer alertGroupId) {
         Map<String, Object> result = new HashMap<>();
-        //only admin can operate
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
+        // only admin can operate
         if (check(result, !isAdmin(loginUser), Status.USER_NO_OPERATION_PERM)) {
             return result;
         }
@@ -1064,7 +1075,6 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     private boolean checkTenantExists(int tenantId) {
         return tenantMapper.queryById(tenantId) != null;
     }
-
 
     /**
      * @return if check failed return the field, otherwise return null
@@ -1098,28 +1108,33 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
      * @param dstBasePath       dst base path
      * @throws IOException io exception
      */
-    private void copyResourceFiles(String oldTenantCode, String newTenantCode, ResourceComponent resourceComponent, String srcBasePath, String dstBasePath) {
+    private void copyResourceFiles(String oldTenantCode, String newTenantCode, ResourceComponent resourceComponent,
+                                   String srcBasePath, String dstBasePath) {
         List<ResourceComponent> components = resourceComponent.getChildren();
 
         try {
             if (CollectionUtils.isNotEmpty(components)) {
                 for (ResourceComponent component : components) {
                     // verify whether exist
-                    if (!storageOperate.exists(oldTenantCode, String.format(Constants.FORMAT_S_S, srcBasePath, component.getFullName()))) {
+                    if (!storageOperate.exists(oldTenantCode,
+                            String.format(Constants.FORMAT_S_S, srcBasePath, component.getFullName()))) {
                         logger.error("resource file: {} not exist,copy error", component.getFullName());
                         throw new ServiceException(Status.RESOURCE_NOT_EXIST);
                     }
 
                     if (!component.isDirctory()) {
                         // copy it to dst
-                        storageOperate.copy(String.format(Constants.FORMAT_S_S, srcBasePath, component.getFullName()), String.format(Constants.FORMAT_S_S, dstBasePath, component.getFullName()), false, true);
+                        storageOperate.copy(String.format(Constants.FORMAT_S_S, srcBasePath, component.getFullName()),
+                                String.format(Constants.FORMAT_S_S, dstBasePath, component.getFullName()), false, true);
                         continue;
                     }
 
                     if (CollectionUtils.isEmpty(component.getChildren())) {
                         // if not exist,need create it
-                        if (!storageOperate.exists(oldTenantCode, String.format(Constants.FORMAT_S_S, dstBasePath, component.getFullName()))) {
-                            storageOperate.mkdir(newTenantCode, String.format(Constants.FORMAT_S_S, dstBasePath, component.getFullName()));
+                        if (!storageOperate.exists(oldTenantCode,
+                                String.format(Constants.FORMAT_S_S, dstBasePath, component.getFullName()))) {
+                            storageOperate.mkdir(newTenantCode,
+                                    String.format(Constants.FORMAT_S_S, dstBasePath, component.getFullName()));
                         }
                     } else {
                         copyResourceFiles(oldTenantCode, newTenantCode, component, srcBasePath, dstBasePath);
@@ -1147,9 +1162,12 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     public Map<String, Object> registerUser(String userName, String userPassword, String repeatPassword, String email) {
         Map<String, Object> result = new HashMap<>();
 
-        //check user params
+        // check user params
         String msg = this.checkUserParams(userName, userPassword, email, "");
-
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
         if (!StringUtils.isEmpty(msg)) {
             putMsg(result, Status.REQUEST_PARAMS_NOT_VALID_ERROR, msg);
             return result;
@@ -1176,7 +1194,10 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     public Map<String, Object> activateUser(User loginUser, String userName) {
         Map<String, Object> result = new HashMap<>();
         result.put(Constants.STATUS, false);
-
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
         if (!isAdmin(loginUser)) {
             putMsg(result, Status.USER_NO_OPERATION_PERM);
             return result;
@@ -1221,6 +1242,10 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     public Map<String, Object> batchActivateUser(User loginUser, List<String> userNames) {
         Map<String, Object> result = new HashMap<>();
 
+        if (resourcePermissionCheckService.functionDisabled()) {
+            putMsg(result, Status.FUNCTION_DISABLED);
+            return result;
+        }
         if (!isAdmin(loginUser)) {
             putMsg(result, Status.USER_NO_OPERATION_PERM);
             return result;
@@ -1257,5 +1282,37 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         putMsg(result, Status.SUCCESS);
         result.put(Constants.DATA_LIST, res);
         return result;
+    }
+
+    /**
+     * Make sure user with given name exists, and create the user if not exists
+     * <p>
+     * ONLY for python gateway server, and should not use this in web ui function
+     *
+     * @param userName     user name
+     * @param userPassword user password
+     * @param email        user email
+     * @param phone        user phone
+     * @param tenantCode   tenant code
+     * @param queue        queue
+     * @param state        state
+     * @return create result code
+     */
+    @Override
+    @Transactional
+    public User createUserIfNotExists(String userName, String userPassword, String email, String phone,
+                                      String tenantCode,
+                                      String queue,
+                                      int state) throws IOException {
+        User user = userMapper.queryByUserNameAccurately(userName);
+        if (Objects.isNull(user)) {
+            Tenant tenant = tenantMapper.queryByTenantCode(tenantCode);
+            user = createUser(userName, userPassword, email, tenant.getId(), phone, queue, state);
+            return user;
+        }
+
+        updateUser(user, user.getId(), userName, userPassword, email, user.getTenantId(), phone, queue, state, null);
+        user = userMapper.queryDetailsById(user.getId());
+        return user;
     }
 }

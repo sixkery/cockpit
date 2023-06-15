@@ -17,15 +17,16 @@
 
 package org.apache.dolphinscheduler.common.utils;
 
-import static org.apache.dolphinscheduler.common.Constants.YYYYMMDDHHMMSS;
+import static org.apache.dolphinscheduler.common.constants.DateConstants.YYYYMMDDHHMMSS;
 
-import org.apache.dolphinscheduler.common.Constants;
+import org.apache.dolphinscheduler.common.constants.DataSourceConstants;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -51,8 +52,8 @@ public class FileUtilsTest {
 
     @Test
     public void testGetProcessExecDir() {
-        String dir = FileUtils.getProcessExecDir(1L, 2L, 1, 3, 4);
-        Assert.assertEquals("/tmp/dolphinscheduler/exec/process/1/2_1/3/4", dir);
+        String dir = FileUtils.getProcessExecDir("test", 1L, 2L, 1, 3, 4);
+        Assertions.assertEquals("/tmp/dolphinscheduler/exec/process/test/1/2_1/3/4", dir);
     }
 
     @Test
@@ -68,10 +69,10 @@ public class FileUtilsTest {
     @Test
     public void testSetValue() {
         try {
-            PropertyUtils.setValue(Constants.DATASOURCE_ENCRYPTION_ENABLE,"true");
-            Assert.assertTrue(PropertyUtils.getBoolean(Constants.DATASOURCE_ENCRYPTION_ENABLE));
-            PropertyUtils.setValue(Constants.DATASOURCE_ENCRYPTION_ENABLE,"false");
-            Assert.assertFalse(PropertyUtils.getBoolean(Constants.DATASOURCE_ENCRYPTION_ENABLE));
+            PropertyUtils.setValue(DataSourceConstants.DATASOURCE_ENCRYPTION_ENABLE, "true");
+            Assertions.assertTrue(PropertyUtils.getBoolean(DataSourceConstants.DATASOURCE_ENCRYPTION_ENABLE));
+            PropertyUtils.setValue(DataSourceConstants.DATASOURCE_ENCRYPTION_ENABLE, "false");
+            Assertions.assertFalse(PropertyUtils.getBoolean(DataSourceConstants.DATASOURCE_ENCRYPTION_ENABLE));
         } catch (Exception e) {
             Assert.assertTrue(false);
         }

@@ -44,7 +44,7 @@ public interface ExecutorService {
      * @param processDefinitionCode process definition code
      * @param cronTime cron time
      * @param commandType command type
-     * @param failureStrategy failuer strategy
+     * @param failureStrategy failure strategy
      * @param startNodeList start nodelist
      * @param taskDependType node dependency type
      * @param warningType warning type
@@ -119,4 +119,22 @@ public interface ExecutorService {
      * @return
      */
     WorkflowExecuteDto queryExecutingWorkflowByProcessInstanceId(Integer processInstanceId);
+
+    /**
+     * execute stream task instance
+     *
+     * @param loginUser login user
+     * @param projectCode project code
+     * @param warningGroupId notify group id
+     * @param workerGroup worker group name
+     * @param environmentCode environment code
+     * @param startParams the global param values which pass to new process instance
+     * @return execute process instance code
+     */
+    Map<String, Object> execStreamTaskInstance(User loginUser, long projectCode,
+                                            long taskDefinitionCode, int taskDefinitionVersion,
+                                            int warningGroupId,
+                                            String workerGroup, Long environmentCode,
+                                            Map<String, String> startParams,
+                                            int dryRun);
 }

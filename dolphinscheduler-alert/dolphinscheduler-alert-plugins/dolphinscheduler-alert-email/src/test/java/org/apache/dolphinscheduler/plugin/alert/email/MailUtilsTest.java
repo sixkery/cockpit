@@ -19,9 +19,9 @@ package org.apache.dolphinscheduler.plugin.alert.email;
 
 import org.apache.dolphinscheduler.alert.api.AlertConstants;
 import org.apache.dolphinscheduler.alert.api.ShowType;
+import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.plugin.alert.email.template.AlertTemplate;
 import org.apache.dolphinscheduler.plugin.alert.email.template.DefaultHTMLTemplate;
-import org.apache.dolphinscheduler.spi.utils.JSONUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,18 +29,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Disabled("The test case makes no sense")
 public class MailUtilsTest {
     private static final Logger logger = LoggerFactory.getLogger(MailUtilsTest.class);
     static MailSender mailSender;
     private static Map<String, String> emailConfig = new HashMap<>();
     private static AlertTemplate alertTemplate;
 
-    @BeforeClass
+    @BeforeAll
     public static void initEmailConfig() {
         emailConfig.put(MailParamsConstants.NAME_MAIL_PROTOCOL, "smtp");
         emailConfig.put(MailParamsConstants.NAME_MAIL_SMTP_HOST, "xxx.xxx.com");
@@ -76,6 +79,35 @@ public class MailUtilsTest {
         mailSender.sendMails(
             "Mysql Exception",
             content);
+    }
+
+    @Test
+    void testAuthCheck() {
+        String title = "Auth Exception";
+        String content = list2String();
+
+        // test auth false and user && pwd null will pass
+        emailConfig.put(MailParamsConstants.NAME_MAIL_SMTP_AUTH, "false");
+        emailConfig.put(MailParamsConstants.NAME_MAIL_USER, null);
+        emailConfig.put(MailParamsConstants.NAME_MAIL_PASSWD, null);
+        mailSender = new MailSender(emailConfig);
+        mailSender.sendMails(title, content);
+
+        try {
+            // test auth true and user null will throw exception
+            emailConfig.put(MailParamsConstants.NAME_MAIL_SMTP_AUTH, "true");
+            emailConfig.put(MailParamsConstants.NAME_MAIL_USER, null);
+            mailSender = new MailSender(emailConfig);
+            mailSender.sendMails(title, content);
+        } catch (Exception e) {
+            Assertions.assertTrue(e.getMessage().contains(MailParamsConstants.NAME_MAIL_USER));
+        }
+
+        // test auth true and user && pwd not null will pass
+        emailConfig.put(MailParamsConstants.NAME_MAIL_USER, "user");
+        emailConfig.put(MailParamsConstants.NAME_MAIL_PASSWD, "passwd");
+        mailSender = new MailSender(emailConfig);
+        mailSender.sendMails(title, content);
     }
 
     public String list2String() {
