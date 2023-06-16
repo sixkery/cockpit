@@ -118,22 +118,22 @@ const NodeDetailModal = defineComponent({
 
     const initHeaderLinks = (processInstance: any, taskType?: ITaskType) => {
       headerLinks.value = [
-        // {
-        //   text: t('project.node.instructions'),
-        //   show: !!(taskType && !TASK_TYPES_MAP[taskType]?.helperLinkDisable),
-        //   action: () => {
-        //     let linkedTaskType = taskType?.toLowerCase().replace('_', '-')
-        //     if (taskType === 'PROCEDURE') linkedTaskType = 'stored-procedure'
-        //     const helpUrl =
-        //       'https://dolphinscheduler.apache.org/' +
-        //       locale.value.toLowerCase().replace('_', '-') +
-        //       '/docs/latest/user_doc/guide/task/' +
-        //       linkedTaskType +
-        //       '.html'
-        //     window.open(helpUrl)
-        //   },
-        //   icon: renderIcon(QuestionCircleTwotone)
-        // },
+        {
+          text: t('project.node.instructions'),
+          show: !!(taskType && !TASK_TYPES_MAP[taskType]?.helperLinkDisable),
+          action: () => {
+            let linkedTaskType = taskType?.toLowerCase().replace('_', '-')
+            if (taskType === 'PROCEDURE') linkedTaskType = 'stored-procedure'
+            const helpUrl =
+              'https://dolphinscheduler.apache.org/' +
+              locale.value.toLowerCase().replace('_', '-') +
+              '/docs/latest/user_doc/guide/task/' +
+              linkedTaskType +
+              '.html'
+            window.open(helpUrl)
+          },
+          icon: renderIcon(QuestionCircleTwotone)
+        },
         {
           text: t('project.node.view_history'),
           show: !!props.taskInstance,

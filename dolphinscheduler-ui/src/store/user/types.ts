@@ -21,7 +21,6 @@ interface UserState {
   sessionId: string
   securityConfigType: string
   userInfo: UserInfoRes | {}
-  pgpToken: boolean
 }
 
 export { UserState }

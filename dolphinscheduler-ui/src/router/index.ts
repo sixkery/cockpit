@@ -28,10 +28,6 @@ import type { UserInfoRes } from '@/service/modules/users/types'
 // NProgress
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
-import {SessionIdRes} from "@/service/modules/login/types";
-import {pgpCheckToken} from "@/service/modules/pgp-check-token";
-import {getUserInfo} from "@/service/modules/users";
-import {useTimezoneStore} from "@/store/timezone/timezone";
 
 const router = createRouter({
   history: createWebHistory(
@@ -59,22 +55,6 @@ router.beforeEach(
     NProgress.start()
     const userStore = useUserStore()
     const metaData: metaData = to.meta
-    const timezoneStore = useTimezoneStore()
-
-    // pgp check token
-    console.log("222222222")
-    if (to.fullPath.includes('pgp_token')) {
-      const token = to.query.pgp_token + '';
-      const loginRes: SessionIdRes = await pgpCheckToken({token});
-      await userStore.setSessionId(loginRes.sessionId)
-      const userInfoRes: UserInfoRes = await getUserInfo()
-      await userStore.setUserInfo(userInfoRes)
-      await userStore.setPgpToken(true)
-      const timezone = userInfoRes.timeZone ? userInfoRes.timeZone : 'UTC'
-      await timezoneStore.setTimezone(timezone)
-      const path = to.path
-      console.log("111111111")
-      router.push({path: path || 'home'})
     if (
       metaData.auth?.includes('ADMIN_USER') &&
       (userStore.getUserInfo as UserInfoRes).userType !== 'ADMIN_USER' &&

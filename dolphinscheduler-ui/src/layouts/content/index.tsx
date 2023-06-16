@@ -24,7 +24,6 @@ import { useLocalesStore } from '@/store/locales/locales'
 import { useRouteStore } from '@/store/route/route'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { useUserStore } from "@/store/user/user";
 
 const Content = defineComponent({
   name: 'DSContent',
@@ -102,10 +101,8 @@ const Content = defineComponent({
     }
   },
   render() {
-    const userStore = useUserStore()
     return (
       <NLayout style='height: 100%'>
-        <div v-show={!userStore.pgpToken}>
         <NLayoutHeader style='height: 65px'>
           <NavBar
             class='tab-horizontal'
@@ -115,7 +112,6 @@ const Content = defineComponent({
             userDropdownOptions={this.userDropdownOptions}
           />
         </NLayoutHeader>
-        </div>
         <NLayout has-sider position='absolute' style='top: 65px'>
           {this.isShowSide && (
             <SideBar

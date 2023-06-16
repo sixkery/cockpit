@@ -254,7 +254,7 @@ spring:
       org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://172.2.0.76:5432/dolphinscheduler
+    url: jdbc:postgresql://127.0.0.1:5432/dolphinscheduler
     username: root
     password: root
 
@@ -262,12 +262,12 @@ spring:
 spring:
   config:
     activate:
-      on-profile: postgresql
+      on-profile: mysql
   sql:
      init:
-       schema-locations: classpath:sql/dolphinscheduler_postgresql.sql
+       schema-locations: classpath:sql/dolphinscheduler_mysql.sql
   datasource:
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://172.2.0.76:5432/dolphinscheduler
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/dolphinscheduler?useUnicode=true&characterEncoding=UTF-8
     username: root
     password: root

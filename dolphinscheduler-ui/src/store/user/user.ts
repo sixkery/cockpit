@@ -36,9 +36,6 @@ export const useUserStore = defineStore({
     },
     getUserInfo(): UserInfoRes | {} {
       return this.userInfo
-    },
-    getPgpToken(): boolean {
-      return this.pgpToken
     }
   },
   actions: {
@@ -50,9 +47,6 @@ export const useUserStore = defineStore({
     },
     setUserInfo(userInfo: UserInfoRes | {}): void {
       this.userInfo = userInfo
-    },
-    setPgpToken(pgpToken: boolean): void {
-      this.pgpToken = pgpToken
-    },
+    }
   }
 })
