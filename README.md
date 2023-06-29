@@ -4,7 +4,7 @@
 
 本地开发
 1. 本地需安装 zookeeper 并启动
-2. 拉取代码并且编译： mvn clean package -am  -Dmaven.test.skip=true
+2. 拉取代码并且编译： mvn clean package -am -Dmaven.test.skip=true
 3. 数据库的连接配置需改动四处 dolphinscheduler-master 和 dolphinscheduler-worker dolphinscheduler-alert-server 以及 dolphinscheduler-api
 4. 启动 MasterServer WorkerServer ApiApplicationServer 即可
 
