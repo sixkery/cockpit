@@ -5,20 +5,16 @@ import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
 import org.apache.dolphinscheduler.api.aspect.AccessLogAnnotation;
-import org.apache.dolphinscheduler.api.enums.Status;
 import org.apache.dolphinscheduler.api.exceptions.ApiException;
+import org.apache.dolphinscheduler.api.service.workflow.WorkflowService;
 import org.apache.dolphinscheduler.api.utils.Result;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.apache.dolphinscheduler.dao.entity.workflow.CatalogEntity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import static org.apache.dolphinscheduler.api.enums.Status.USER_LOGIN_FAILURE;
+import static org.apache.dolphinscheduler.api.enums.Status.WORKFLOW_CATALOG_CREATE_ERROR;
 
 /**
  * 任务调度-工作流定义控制器
@@ -31,6 +27,25 @@ import static org.apache.dolphinscheduler.api.enums.Status.USER_LOGIN_FAILURE;
 @RequestMapping("/task/scheduler")
 public class WorkflowController {
 
+
+    @Autowired
+    private WorkflowService workflowService;
+
+    /**
+     * 目录新增
+     * @param name 名称
+     * @param id id
+     * @return result
+     */
+    @PostMapping(value = "/catalog")
+    @ApiException(WORKFLOW_CATALOG_CREATE_ERROR)
+    public Result<String> create(@RequestParam(value = "name") String name,
+                                 @RequestParam(value = "id", required = false) Integer id) {
+
+        return workflowService.createCatalog(name, id);
+    }
+
+
     /**
      * 目录查询
      *
@@ -42,20 +57,23 @@ public class WorkflowController {
             @ApiImplicitParam(name = "token", value = "PGP_CHECK_TOKEN", required = true, dataType = "String")
     })
     @GetMapping(value = "/catalog")
-    @ApiException(USER_LOGIN_FAILURE)
     @AccessLogAnnotation(ignoreRequestArgs = {"searchVal"})
-    public Result<List<Map<String, String>>> findAll(@RequestParam(value = "searchVal") String searchVal) {
+    public Result<List<CatalogEntity>> findAll(@RequestParam(value = "searchVal", required = false) String searchVal) {
 
-        Result<List<Map<String, String>>> result = new Result<>();
-        List<Map<String, String>> list = new ArrayList<>();
-        Map<String, String> map = new HashMap<>();
-        map.put("id", "1");
-        map.put("name", "目录 1");
-        list.add(map);
-        result.setData(list);
-        result.setCode(Status.SUCCESS.getCode());
-        result.setMsg("查询成功！");
-        return result;
+        return workflowService.findAllCatalog();
+    }
+
+
+    /**
+     * 根据目录 ID 查询工作流定义
+     *
+     * @param id search
+     * @return login result
+     */
+    @GetMapping(value = "/catalog/id")
+    @AccessLogAnnotation(ignoreRequestArgs = {"id"})
+    public Result<List<CatalogEntity>> findWorkflowById(@RequestParam(value = "id") Integer id) {
+        return workflowService.findWorkflowById(id);
     }
 
 }

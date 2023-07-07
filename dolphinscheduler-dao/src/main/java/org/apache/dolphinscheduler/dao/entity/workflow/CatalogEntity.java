@@ -15,20 +15,31 @@
  * limitations under the License.
  */
 
-package org.apache.dolphinscheduler.dao.entity;
-
-import java.util.Date;
-
-import lombok.Data;
+package org.apache.dolphinscheduler.dao.entity.workflow;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @author sixkery
+ * @since 2023/6/29
+ */
 @Data
-@TableName("t_ds_relation_project_user")
-public class ProjectUser {
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@TableName("t_ds_catalog")
+public class CatalogEntity {
 
     /**
      * id
@@ -36,43 +47,52 @@ public class ProjectUser {
     @TableId(value = "id", type = IdType.AUTO)
     private Integer id;
 
-    @TableField("user_id")
-    private int userId;
-
-    @TableField("project_id")
-    private int projectId;
+    /**
+     * name
+     */
+    @TableField("name")
+    private String name;
 
     /**
-     * project code
+     * parentId
+     */
+    @TableField("parent_id")
+    private Integer parentId;
+
+    /**
+     * 祖级列表
+     */
+    private String ancestors;
+
+    /**
+     * 类型：1：工作流定义 2：数据流定义 3：数据集
+     */
+    private Integer type;
+
+    /**
+     * create_by
+     */
+    @TableField("create_by")
+    private String createBy;
+    /**
+     * create time
+     */
+    private LocalDateTime createTime;
+
+    /**
+     * update_by
+     */
+    @TableField("update_by")
+    private String updateBy;
+
+    /**
+     * update time
+     */
+    private LocalDateTime updateTime;
+
+    /**
+     * 子级目录
      */
     @TableField(exist = false)
-    private long projectCode;
-
-    /**
-     * project name
-     */
-    @TableField(exist = false)
-    private String projectName;
-
-    /**
-     * user name
-     */
-    @TableField(exist = false)
-    private String userName;
-
-    /**
-     * permission
-     */
-    private int perm;
-
-    /**
-     * 当前用户主要的项目，用于前端显示，如果没值默认当前用户第一个项目
-     */
-    private Integer projectPrimary;
-
-    @TableField("create_time")
-    private Date createTime;
-
-    @TableField("update_time")
-    private Date updateTime;
+    private List<CatalogEntity> children = new ArrayList<>();
 }

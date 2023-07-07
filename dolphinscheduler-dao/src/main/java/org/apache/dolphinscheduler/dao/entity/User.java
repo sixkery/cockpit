@@ -17,9 +17,11 @@
 
 package org.apache.dolphinscheduler.dao.entity;
 
+import lombok.Builder;
 import org.apache.dolphinscheduler.common.enums.UserType;
 
 import java.util.Date;
+import java.util.List;
 
 import lombok.Data;
 
@@ -28,6 +30,10 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
+/**
+ * @author sixkery
+ * @since 2023/7/5
+ */
 @Data
 @TableName("t_ds_user")
 public class User {
@@ -65,5 +71,11 @@ public class User {
     private Date createTime;
 
     private Date updateTime;
+
+    /**
+     * 当前用户主要的项目
+     */
+    @TableField(exist = false)
+    private String primaryProject;
 
 }

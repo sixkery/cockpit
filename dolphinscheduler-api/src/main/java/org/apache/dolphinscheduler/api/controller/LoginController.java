@@ -17,10 +17,11 @@
 
 package org.apache.dolphinscheduler.api.controller;
 
-import static org.apache.dolphinscheduler.api.enums.Status.IP_IS_EMPTY;
-import static org.apache.dolphinscheduler.api.enums.Status.SIGN_OUT_ERROR;
-import static org.apache.dolphinscheduler.api.enums.Status.USER_LOGIN_FAILURE;
-
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.annotations.ApiOperation;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.dolphinscheduler.api.aspect.AccessLogAnnotation;
 import org.apache.dolphinscheduler.api.enums.Status;
 import org.apache.dolphinscheduler.api.exceptions.ApiException;
@@ -29,29 +30,17 @@ import org.apache.dolphinscheduler.api.service.SessionService;
 import org.apache.dolphinscheduler.api.utils.Result;
 import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.dao.entity.User;
-
-import springfox.documentation.annotations.ApiIgnore;
-
-import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpStatus;
-
-import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import springfox.documentation.annotations.ApiIgnore;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestAttribute;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
-import io.swagger.annotations.ApiOperation;
+import static org.apache.dolphinscheduler.api.enums.Status.*;
 
 /**
  * login controller
@@ -70,10 +59,10 @@ public class LoginController extends BaseController {
     /**
      * login
      *
-     * @param userName user name
+     * @param userName     user name
      * @param userPassword user password
-     * @param request request
-     * @param response response
+     * @param request      request
+     * @param response     response
      * @return login result
      */
     @ApiOperation(value = "login", notes = "LOGIN_NOTES")
@@ -121,7 +110,7 @@ public class LoginController extends BaseController {
      * sign out
      *
      * @param loginUser login user
-     * @param request request
+     * @param request   request
      * @return sign out result
      */
     @ApiOperation(value = "signOut", notes = "SIGNOUT_NOTES")
